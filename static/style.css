@@ -1,0 +1,57 @@
+body {
+  font-family: Helvetica, sans-serif;
+  background-color: black;
+  color: white;
+  margin: 20px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th, td {
+  border: 1px solid #444;
+  padding: 10px;
+  text-align: left;
+}
+
+th {
+  background-color: #111;
+}
+
+.online {
+  color: blue;
+  font-weight: bold;
+}
+
+.offline {
+  color: red;
+  font-weight: bold;
+}
+
+.login-box {
+  max-width: 300px;
+  margin: 100px auto;
+  padding: 20px;
+  border: 1px solid #555;
+  background-color: #111;
+  text-align: center;
+}
+
+input, button {
+  display: block;
+  width: 100%;
+  margin: 10px 0;
+  padding: 10px;
+  font-size: 16px;
+}
+button {
+  background-color: #222;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+button:hover {
+  background-color: #333;
+}
