@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Monitoring Dashboard</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+
   <h1>Device Monitoring</h1>
+
   <table>
     <thead>
       <tr>
@@ -14,29 +17,52 @@
         <th>Status</th>
       </tr>
     </thead>
-    <tbody id="device-table"></tbody>
+    <tbody id="device-table">
+      <tr>
+        <td colspan="3">Loading devices…</td>
+      </tr>
+    </tbody>
   </table>
 
   <script>
     async function loadDevices() {
-      const res = await fetch("/accounts");
-      const data = await res.json();
-      const tbody = document.getElementById("device-table");
-      tbody.innerHTML = "";
-      for (const token in data) {
-        const account = data[token];
-        for (const device in account.devices) {
-          const status = account.devices[device];
-          tbody.innerHTML += `<tr>
-            <td>${account.name}</td>
-            <td>${device}</td>
-            <td class="${status}">${status}</td>
-          </tr>`;
+      try {
+        const res = await fetch("/accounts");
+        if (!res.ok) {
+          document.getElementById("device-table").innerHTML =
+            `<tr><td colspan="3">Not logged in</td></tr>`;
+          return;
         }
+
+        const account = await res.json();
+        const tbody = document.getElementById("device-table");
+        tbody.innerHTML = "";
+
+        if (!account.devices || Object.keys(account.devices).length === 0) {
+          tbody.innerHTML =
+            `<tr><td colspan="3">No devices registered yet</td></tr>`;
+          return;
+        }
+
+        for (const device in account.devices) {
+          const status = account.devices[device].toLowerCase();
+          tbody.innerHTML += `
+            <tr>
+              <td>${account.name}</td>
+              <td>${device}</td>
+              <td class="${status}">${status}</td>
+            </tr>
+          `;
+        }
+      } catch (err) {
+        document.getElementById("device-table").innerHTML =
+          `<tr><td colspan="3">Error loading data</td></tr>`;
       }
     }
+
     loadDevices();
     setInterval(loadDevices, 5000);
   </script>
+
 </body>
 </html>
