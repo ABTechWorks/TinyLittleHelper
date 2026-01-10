@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, EmailStr
-import json
 from pathlib import Path
 from datetime import datetime
-import smtplib
+import json, smtplib
 from email.message import EmailMessage
 
 # -----------------------------
@@ -13,12 +15,11 @@ DATA_FILE = Path("accounts.json")
 GMAIL_ADDRESS = "your_email@gmail.com"
 GMAIL_APP_PASSWORD = "your_16_char_app_password"
 
-# Create data file if it doesn't exist
 if not DATA_FILE.exists():
     DATA_FILE.write_text(json.dumps({"accounts": {}}))
 
 # -----------------------------
-# Helper functions
+# Helper Functions
 # -----------------------------
 def load_data():
     with open(DATA_FILE, "r") as f:
@@ -40,15 +41,17 @@ def send_email(to_email: str, subject: str, body: str):
             smtp.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
             smtp.send_message(msg)
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Email failed: {e}")
 
 # -----------------------------
-# FastAPI instance
+# FastAPI App
 # -----------------------------
-app = FastAPI(title="TinyLittleHelper API")
+app = FastAPI()
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # -----------------------------
-# Pydantic models
+# Models
 # -----------------------------
 class Account(BaseModel):
     name: str
@@ -63,16 +66,36 @@ class Heartbeat(BaseModel):
 # -----------------------------
 # Routes
 # -----------------------------
-@app.get("/")
-def read_root():
-    return {"message": "TinyLittleHelper API is running"}
+@app.get("/", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request, "error": ""})
+
+@app.post("/login")
+def login(request: Request, email: str = Form(...), token: str = Form(...)):
+    data = load_data()
+    for acc in data["accounts"].values():
+        if acc["email"] == email and acc["token"] == token:
+            response = RedirectResponse("/dashboard", status_code=302)
+            response.set_cookie(key="account_token", value=token)
+            return response
+    return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid email or token"})
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard(request: Request):
+    token = request.cookies.get("account_token")
+    if not token:
+        return RedirectResponse("/")
+    return templates.TemplateResponse("dashboard.html", {"request": request, "token": token})
+
+@app.get("/accounts")
+def get_accounts():
+    return load_data()
 
 @app.post("/accounts")
 def create_account(account: Account):
     data = load_data()
     if account.token in data["accounts"]:
         raise HTTPException(status_code=400, detail="Token already exists")
-    
     data["accounts"][account.token] = {
         "name": account.name,
         "email": account.email,
@@ -80,27 +103,18 @@ def create_account(account: Account):
         "devices": {}
     }
     save_data(data)
-    
-    send_email(
-        account.email,
-        "Welcome to TinyLittleHelper!",
-        f"Hi {account.name}, your account has been created with token {account.token}"
-    )
-    
+    send_email(account.email, "Welcome!", f"Hi {account.name}, your account has been created!")
     return {"message": "Account created successfully"}
 
 @app.post("/heartbeat")
 def heartbeat(hb: Heartbeat):
     data = load_data()
     account = data["accounts"].get(hb.account_token)
-    
     if not account:
         raise HTTPException(status_code=404, detail="Invalid token")
     
     devices = account.setdefault("devices", {})
     last_status = devices.get(hb.device_name)
-    
-    # Only notify if status changed to online
     notify = False
     if hb.status.lower() == "online" and last_status != "online":
         notify = True
@@ -109,15 +123,7 @@ def heartbeat(hb: Heartbeat):
     save_data(data)
     
     if notify:
-        send_email(
-            account["email"],
-            f"Device Online: {hb.device_name}",
-            f"{hb.device_name} checked in at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        )
-    
+        send_email(account["email"],
+                   f"Device Online: {hb.device_name}",
+                   f"{hb.device_name} checked in at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     return {"status": "ok", "notify_sent": notify}
-
-@app.get("/accounts")
-def get_accounts():
-    data = load_data()
-    return data
