@@ -35,7 +35,7 @@ async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
 @app.post("/signup")
-async def signup(username: str = Form(...), password: str = Form(...)):
+async def signup(request: Request, username: str = Form(...), password: str = Form(...)):
     if username in accounts:
         return templates.TemplateResponse(
             "signup.html",
