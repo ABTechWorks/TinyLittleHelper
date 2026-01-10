@@ -55,3 +55,26 @@ button {
 button:hover {
   background-color: #333;
 }
+
+.center-box {
+  max-width: 500px;
+  margin: 120px auto;
+  text-align: center;
+}
+
+.tagline {
+  color: #aaa;
+  margin-bottom: 30px;
+}
+
+.secondary {
+  display: block;
+  margin-top: 15px;
+  color: #888;
+  text-decoration: none;
+}
+
+.small {
+  font-size: 14px;
+  color: #aaa;
+}

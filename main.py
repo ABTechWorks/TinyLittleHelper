@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 import json, smtplib
 from email.message import EmailMessage
+import secrets
 
 # -----------------------------
 # Config
@@ -21,6 +22,9 @@ if not DATA_FILE.exists():
 # -----------------------------
 # Helper Functions
 # -----------------------------
+def generate_token():
+    return secrets.token_hex(16)
+
 def load_data():
     with open(DATA_FILE, "r") as f:
         return json.load(f)
@@ -67,6 +71,53 @@ class Heartbeat(BaseModel):
 # Routes
 # -----------------------------
 @app.get("/", response_class=HTMLResponse)
+def home(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request, "error": ""})
+
+@app.get("/signup", response_class=HTMLResponse)
+def signup_page(request: Request):
+    return templates.TemplateResponse("signup.html", {"request": request, "error": ""})
+
+@app.post("/signup")
+def signup(name: str = Form(...), email: str = Form(...)):
+    data = load_data()
+
+    # Prevent duplicate email
+    for acc in data["accounts"].values():
+        if acc["email"] == email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+    token = generate_token()
+
+    data["accounts"][token] = {
+        "name": name,
+        "email": email,
+        "token": token,
+        "devices": {}
+    }
+
+    save_data(data)
+
+    send_email(
+        email,
+        "Your Monitoring Token",
+        f"""
+Hi {name},
+
+Your monitoring account has been created.
+
+Your login token:
+{token}
+
+Keep this safe.
+"""
+    )
+
+    response = RedirectResponse("/dashboard", status_code=302)
+    response.set_cookie(key="account_token", value=token)
+    return response
+
+@app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request, "error": ""})
 
