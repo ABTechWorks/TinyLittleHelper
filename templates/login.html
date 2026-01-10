@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="login-box">
+    <h1>Login</h1>
+    <form method="POST" action="/login">
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="text" name="token" placeholder="Token" required>
+      <button type="submit">Login</button>
+    </form>
+    <p style="color:red;">{{ error }}</p>
+  </div>
+</body>
+</html>
