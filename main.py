@@ -40,7 +40,7 @@ async def signup(request: Request, username: str = Form(...), password: str = Fo
         return templates.TemplateResponse(
             "signup.html",
             {
-                "request": {},
+                "request": request,
                 "error": "Username already exists"
             }
         )
