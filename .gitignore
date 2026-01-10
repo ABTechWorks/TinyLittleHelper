@@ -1,0 +1,4 @@
+accounts.json
+venv/
+*.pyc
+__pycache__/
