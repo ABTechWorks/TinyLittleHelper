@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Monitoring Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>Device Monitoring</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Account</th>
+        <th>Device</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="device-table"></tbody>
+  </table>
+
+  <script>
+    async function loadDevices() {
+      const res = await fetch("/accounts");
+      const data = await res.json();
+      const tbody = document.getElementById("device-table");
+      tbody.innerHTML = "";
+      for (const token in data) {
+        const account = data[token];
+        for (const device in account.devices) {
+          const status = account.devices[device];
+          tbody.innerHTML += `<tr>
+            <td>${account.name}</td>
+            <td>${device}</td>
+            <td class="${status}">${status}</td>
+          </tr>`;
+        }
+      }
+    }
+    loadDevices();
+    setInterval(loadDevices, 5000);
+  </script>
+</body>
+</html>
