@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi import status
 import uuid
+from passlib.context import CryptContext
 import os
 
 app = FastAPI()
@@ -12,13 +13,11 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# In-memory storage (MVP only)
+# In-memory storage
 accounts = {}
-sessions = {}
 
-# Email env vars (used later)
-GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ------------------------
 # LANDING PAGE
@@ -28,25 +27,35 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 # ------------------------
-# SIGNUP
+# SIGNUP PAGE
 # ------------------------
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
 @app.post("/signup")
-async def signup(request: Request, username: str = Form(...), password: str = Form(...)):
-    if username in accounts:
+async def signup(request: Request,
+                 username: str = Form(...),
+                 email: str = Form(...),
+                 password: str = Form(...)):
+
+    # Check if username or email already exists
+    if username in accounts or any(acc['email'] == email for acc in accounts.values()):
         return templates.TemplateResponse(
             "signup.html",
             {
                 "request": request,
-                "error": "Username already exists"
+                "error": "Username or email already exists"
             }
         )
 
+    # Hash the password before storing
+    hashed_password = pwd_context.hash(password)
+
+    # Store account
     accounts[username] = {
-        "password": password,
+        "email": email,
+        "password": hashed_password,
         "devices": {
             "Laptop": "online",
             "Phone": "offline"
