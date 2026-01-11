@@ -1,197 +1,283 @@
-# main.py
-from fastapi import FastAPI, Request, Form, Cookie, status
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from datetime import datetime
+from fastapi import FastAPI, Request, Form, Cookie, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from passlib.context import CryptContext
-import os
 import uuid
-import hashlib
-import aiosmtplib
-from email.message import EmailMessage
+import subprocess
+import re
+import os
 
 app = FastAPI()
 
-# Static + templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# In-memory storage (MVP)
+# -------------------------
+# In-memory storage (replace later with DB)
+# -------------------------
 accounts = {}
 sessions = {}
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# -------------------------
+# Utility: Resolve MAC from IP (Windows-safe)
+# -------------------------
+def get_mac_from_ip(ip_address: str):
+    try:
+        # Ping once (Windows)
+        subprocess.run(
+            ["ping", ip_address, "-n", "1"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
 
-# Email env vars
-GMAIL_ADDRESS = os.getenv("GMAIL_ADDRESS")
-GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+        # Read ARP table
+        arp_output = subprocess.check_output(["arp", "-a"], text=True)
+
+        match = re.search(rf"{re.escape(ip_address)}\s+([a-fA-F0-9:-]+)", arp_output)
+        if match:
+            return match.group(1)
+
+    except Exception:
+        pass
+
+    return None
+
+# Offline Utility Function
+def mark_offline_devices(timeout_seconds=60):
+    now = datetime.utcnow()
+
+    for user in accounts.values():
+        for device in user["devices"].values():
+            last_seen = device.get("last_seen")
+            if last_seen:
+                delta = now - datetime.fromisoformat(last_seen)
+                if delta.total_seconds() > timeout_seconds:
+                    device["status"] = "offline"
 
 
-# ------------------------
-# UTILS
-# ------------------------
-def normalize_password(password: str) -> str:
-    """Normalize password using SHA256 before hashing with bcrypt"""
-    return hashlib.sha256(password.encode("utf-8")).hexdigest()
+# -------------------------
+# Routes
+# -------------------------
 
-
-async def send_verification_email(to_email: str, token: str):
-    """Send verification email asynchronously using Gmail SMTP"""
-    msg = EmailMessage()
-    msg["Subject"] = "Verify Your Account"
-    msg["From"] = GMAIL_ADDRESS
-    msg["To"] = to_email
-    msg.set_content(
-        f"Hello!\n\nClick the link below to verify your account:\n\n"
-        f"http://127.0.0.1:8000/verify?token={token}\n\n"
-        "If you didn't sign up, ignore this email."
-    )
-
-    await aiosmtplib.send(
-        msg,
-        hostname="smtp.gmail.com",
-        port=465,
-        username=GMAIL_ADDRESS,
-        password=GMAIL_APP_PASSWORD,
-        use_tls=True
-    )
-
-
-# ------------------------
-# LANDING PAGE
-# ------------------------
+# Root route → landing page with signup/login options
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
+async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 
-# ------------------------
-# SIGNUP
-# ------------------------
+# -------------------------
+# Signup
+# -------------------------
+
+# GET route to show signup form
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
-
+# POST route to handle signup form submission
 @app.post("/signup")
-async def signup(
-    request: Request,
-    username: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...)
-):
-    # Check if username or email exists
-    if username in accounts or any(acc['email'] == email for acc in accounts.values()):
-        return templates.TemplateResponse(
-            "signup.html",
-            {"request": request, "error": "Username or email already exists"}
-        )
+async def signup(username: str = Form(...), password: str = Form(...)):
+    if username in accounts:
+        return JSONResponse(status_code=400, content={"error": "User already exists"})
 
-    # Hash password
-    normalized = normalize_password(password)
-    hashed_password = pwd_context.hash(normalized)
-
-    # Generate email verification token
-    token = str(uuid.uuid4())
-
-    # Store account with 'verified' flag
     accounts[username] = {
-        "email": email,
-        "password": hashed_password,
-        "verified": False,
-        "token": token,
-        "devices": {"Laptop": "online", "Phone": "offline"}
+        "password": password,
+        "devices": {}  # unified device schema
     }
 
-    # Send verification email
-    await send_verification_email(email, token)
+    # unique account token
+    accounts[username]["token"] = str(uuid.uuid4())
 
-    return templates.TemplateResponse(
-        "signup.html",
-        {"request": request, "message": "Check your email to verify your account!"}
-    )
+    return RedirectResponse("/login", status_code=303)  # send user to login after signup
 
+# -------------------------
+# Login
+# -------------------------
 
-# ------------------------
-# EMAIL VERIFICATION
-# ------------------------
-@app.get("/verify", response_class=HTMLResponse)
-async def verify_account(request: Request, token: str):
-    for username, account in accounts.items():
-        if account.get("token") == token:
-            account["verified"] = True
-            return templates.TemplateResponse(
-                "login.html",
-                {"request": request, "message": "Your account is verified! You can log in now."}
-            )
-
-    return templates.TemplateResponse(
-        "login.html",
-        {"request": request, "error": "Invalid verification token"}
-    )
-
-
-# ------------------------
-# LOGIN
-# ------------------------
+# GET route to show login form
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-
+# POST route to handle login form submission
 @app.post("/login")
 async def login(username: str = Form(...), password: str = Form(...)):
-    user = accounts.get(username)
+    if username not in accounts or accounts[username]["password"] != password:
+        return JSONResponse(status_code=401, content={"error": "Invalid credentials"})
 
-    if not user or not user.get("verified"):
-        return templates.TemplateResponse(
-            "login.html",
-            {"request": {}, "error": "Invalid username or account not verified"}
-        )
+    # create session
+    session_id = str(uuid.uuid4())
+    sessions[session_id] = username
 
-    if not pwd_context.verify(normalize_password(password), user["password"]):
-        return templates.TemplateResponse(
-            "login.html",
-            {"request": {}, "error": "Invalid password"}
-        )
-
-    # Create session
-    session_token = str(uuid.uuid4())
-    sessions[session_token] = username
-
-    response = RedirectResponse("/dashboard", status_code=status.HTTP_303_SEE_OTHER)
-    response.set_cookie("session", session_token, httponly=True)
+    # redirect to dashboard and set cookie
+    response = RedirectResponse("/dashboard", status_code=303)
+    response.set_cookie("session", session_id, httponly=True)
     return response
 
 
-# ------------------------
-# DASHBOARD (PROTECTED)
-# ------------------------
+# -------------------------
+# Dashboard
+# -------------------------
+
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, session: str = Cookie(None)):
+    # check if session is valid
     if not session or session not in sessions:
-        return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse("/login", status_code=303)
 
     username = sessions[session]
+    devices = accounts[username].get("devices", {})
+
+    # mark offline devices
+    mark_offline_devices()
+
     return templates.TemplateResponse(
         "dashboard.html",
-        {"request": request, "username": username}
+        {
+            "request": request,
+            "username": username,
+            "devices": devices
+        }
     )
+@app.post("/add_device")
+async def add_device(
+    request: Request,
+    device_name: str = Form(...),
+    ip: str = Form(None),
+    mac: str = Form(None),
+    session: str = Cookie(None)
+):
+    if not session or session not in sessions:
+        return RedirectResponse("/login", status_code=303)
+
+    username = sessions[session]
+
+    if not device_name or (not ip and not mac):
+        return JSONResponse({"error": "Device name + IP or MAC required"}, status_code=400)
+
+    device_key = mac if mac else device_name
+    accounts[username].setdefault("devices", {})[device_key] = {
+        "status": "online",
+        "ip": ip,
+        "mac": mac,
+        "last_seen": datetime.utcnow().isoformat()
+    }
+
+    return RedirectResponse("/dashboard", status_code=303)
 
 
-# ------------------------
-# API: ACCOUNT DATA (for dashboard JS)
-# ------------------------
-@app.get("/accounts")
-async def get_account(session: str = Cookie(None)):
+# -------------------------
+# Device Heartbeat
+# -------------------------
+
+@app.post("/device_heartbeat")
+async def device_heartbeat(request: Request):
+    data = await request.json()
+
+    token = data.get("token")
+    # Find username based on token
+    username = next((u for u, a in accounts.items() if a.get("token") == token), None)
+
+    if not username:
+        return JSONResponse(status_code=401, content={"error": "Invalid token"})
+
+    device_name = data.get("device_name")
+    ip = data.get("ip")
+    mac = data.get("mac")
+
+    if not username or username not in accounts:
+        return JSONResponse(status_code=401, content={"error": "Invalid user"})
+
+    accounts[username].setdefault("devices", {})
+
+    # Try to resolve pending MAC
+    if ip and (not mac or mac == "pending"):
+        resolved_mac = get_mac_from_ip(ip)
+        if resolved_mac:
+            mac = resolved_mac
+
+    device_key = mac if mac else device_name
+
+    accounts[username]["devices"][device_key] = {
+        "status": "online",
+        "ip": ip,
+        "mac": mac,
+        "last_seen": datetime.utcnow().isoformat()
+    }
+
+    return JSONResponse({"status": "heartbeat received"})
+
+
+# -------------------------
+# OLD MANUAL DEVICE ADD
+# -------------------------
+@app.post("/add_device")
+async def add_device(
+    device_name: str = Form(...),
+    session: str = Cookie(None)
+):
     if not session or session not in sessions:
         return JSONResponse(status_code=401, content={"error": "Not logged in"})
 
     username = sessions[session]
-    account = accounts.get(username)
+    accounts[username].setdefault("devices", {})
 
-    return {
-        "name": username,
-        "devices": account["devices"]
+    accounts[username]["devices"][device_name] = {
+        "status": "online",
+        "ip": None,
+        "mac": None
     }
+
+    return RedirectResponse("/dashboard", status_code=303)
+
+# -------------------------
+# ADVANCED DEVICE ADD (IP / MAC)
+# -------------------------
+@app.post("/add_device_advanced")
+async def add_device_advanced(request: Request, session: str = Cookie(None)):
+    if not session or session not in sessions:
+        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+
+    form = await request.form()
+    device_ip = form.get("device_ip")
+    device_mac = form.get("device_mac")
+    username = sessions[session]
+
+    accounts[username].setdefault("devices", {})
+
+    # If only IP provided → attempt MAC resolution
+    if device_ip and not device_mac:
+        device_mac = get_mac_from_ip(device_ip)
+        if not device_mac:
+            device_mac = "pending"
+
+    if not device_ip and not device_mac:
+        return JSONResponse(status_code=400, content={"error": "IP or MAC required"})
+
+    device_key = device_mac if device_mac != "pending" else device_ip
+
+    accounts[username]["devices"][device_key] = {
+        "status": "online" if device_mac != "pending" else "offline",
+        "ip": device_ip,
+        "mac": device_mac,
+	"last_seen": datetime.utcnow().isoformat()
+    }
+
+    return RedirectResponse("/dashboard", status_code=303)
+
+# -------------------------
+# HELPER DOWNLOAD (PYTHON FILE)
+# -------------------------
+@app.get("/download_helper")
+async def download_helper():
+    path_to_file = "helper/TinyLittleHelper.py"
+
+    if not os.path.exists(path_to_file):
+        raise HTTPException(status_code=404, detail="Helper not found")
+
+    return FileResponse(
+        path_to_file,
+        filename="TinyLittleHelper.py",
+        media_type="text/x-python"
+    )

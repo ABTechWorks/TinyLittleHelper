@@ -1,68 +1,39 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>Monitoring Dashboard</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
+<h2><p style="text-align: center;">Device Monitoring</p></h2>
 
-  <h1>Device Monitoring</h1>
+<h3><p style="text-align: center;">Add a new device</p></h3>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Account</th>
-        <th>Device</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody id="device-table">
-      <tr>
-        <td colspan="3">Loading devices…</td>
-      </tr>
-    </tbody>
-  </table>
+<p>Or download the TinyLittleHelper client for automatic device registration:</p>
+<a href="/download_helper">Download TinyLittleHelper</a>
 
-  <script>
-    async function loadDevices() {
-      try {
-        const res = await fetch("/accounts");
-        if (!res.ok) {
-          document.getElementById("device-table").innerHTML =
-            `<tr><td colspan="3">Not logged in</td></tr>`;
-          return;
-        }
+<p>Devices can be added manually using the form above or automatically using the TinyLittleHelper client.</p>
+<small>Devices added via the TinyLittleHelper client will automatically appear here with their real device name and status.</small>
 
-        const account = await res.json();
-        const tbody = document.getElementById("device-table");
-        tbody.innerHTML = "";
+<h3>Advanced Device Registration</h3>
+<form method="POST" action="/add_device">
+  <input type="text" name="device_name" placeholder="Device Name" required>
+  <input type="text" name="device_ip" placeholder="IP Address">
+  <input type="text" name="device_mac" placeholder="MAC Address (optional)">
+  <button type="submit">Add Device</button>
+</form>
+<p><small><p style="text-align: center;">Device name plus at least IP or MAC is required.</small></p>
 
-        if (!account.devices || Object.keys(account.devices).length === 0) {
-          tbody.innerHTML =
-            `<tr><td colspan="3">No devices registered yet</td></tr>`;
-          return;
-        }
+<p><small><p style="text-align: center;">Enter either MAC, IP, or both. If only IP is entered, the system will automatically detect the MAC when the device comes online.</small></p>
 
-        for (const device in account.devices) {
-          const status = account.devices[device].toLowerCase();
-          tbody.innerHTML += `
-            <tr>
-              <td>${account.name}</td>
-              <td>${device}</td>
-              <td class="${status}">${status}</td>
-            </tr>
-          `;
-        }
-      } catch (err) {
-        document.getElementById("device-table").innerHTML =
-          `<tr><td colspan="3">Error loading data</td></tr>`;
-      }
-    }
-
-    loadDevices();
-    setInterval(loadDevices, 5000);
-  </script>
-
-</body>
-</html>
+<div style="text-align: center;">
+<table style="margin: 0 auto;">
+  <tr>
+    <th>Account</th>
+    <th>Device</th>
+    <th>Status</th>
+    <th>Last Seen</th>
+  </tr>
+  {% for device, info in devices.items() %}
+  <tr>
+    <td>{{ username }}</td>
+    <td>{{ device }}</td>
+    <td>{{ info.get('status', 'offline') }}</td>
+    <td>{{ info.get('last_seen', '-') }}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
