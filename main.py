@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Request, Form, HTTPException, Cookie, status
-from fastapi.responses import HTMLResponse, RedirectResponse 
+from fastapi import FastAPI, Request, Form, Cookie, status
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from passlib.context import CryptContext
-import os
+import hashlib
+import uuid
 
 app = FastAPI()
 
@@ -13,9 +14,16 @@ templates = Jinja2Templates(directory="templates")
 
 # In-memory storage
 accounts = {}
+sessions = {}
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# ------------------------
+# HELPERS
+# ------------------------
+def normalize_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 # ------------------------
 # LANDING PAGE
@@ -25,32 +33,28 @@ async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 # ------------------------
-# SIGNUP PAGE
+# SIGNUP
 # ------------------------
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
 @app.post("/signup")
-async def signup(request: Request,
-                 username: str = Form(...),
-                 email: str = Form(...),
-                 password: str = Form(...)):
-
-    # Check if username or email already exists
-    if username in accounts or any(acc['email'] == email for acc in accounts.values()):
+async def signup(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...)
+):
+    if username in accounts or any(acc["email"] == email for acc in accounts.values()):
         return templates.TemplateResponse(
             "signup.html",
-            {
-                "request": request,
-                "error": "Username or email already exists"
-            }
+            {"request": request, "error": "Username or email already exists"}
         )
 
-    # Hash the password before storing
-    hashed_password = pwd_context.hash(password)
+    normalized = normalize_password(password)
+    hashed_password = pwd_context.hash(normalized)
 
-    # Store account
     accounts[username] = {
         "email": email,
         "password": hashed_password,
@@ -60,7 +64,6 @@ async def signup(request: Request,
         }
     }
 
-    # Redirect user to login after signup
     return RedirectResponse("/login", status_code=status.HTTP_303_SEE_OTHER)
 
 # ------------------------
@@ -71,16 +74,20 @@ async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 @app.post("/login")
-async def login(username: str = Form(...), password: str = Form(...)):
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...)
+):
     user = accounts.get(username)
 
-    if not user or user["password"] != password:
+    if not user or not pwd_context.verify(
+        normalize_password(password),
+        user["password"]
+    ):
         return templates.TemplateResponse(
             "login.html",
-            {
-                "request": {},
-                "error": "Invalid username or password"
-            }
+            {"request": request, "error": "Invalid username or password"}
         )
 
     session_token = str(uuid.uuid4())
@@ -101,7 +108,7 @@ async def dashboard(request: Request, session: str = Cookie(None)):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 # ------------------------
-# API: ACCOUNT DATA (USED BY DASHBOARD JS)
+# API: ACCOUNT DATA
 # ------------------------
 @app.get("/accounts")
 async def get_account(session: str = Cookie(None)):
@@ -109,7 +116,7 @@ async def get_account(session: str = Cookie(None)):
         return JSONResponse(status_code=401, content={"error": "Not logged in"})
 
     username = sessions[session]
-    account = accounts.get(username)
+    account = accounts[username]
 
     return {
         "name": username,
