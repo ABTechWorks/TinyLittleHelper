@@ -1,9 +1,7 @@
-from fastapi import FastAPI, Request, Form, HTTPException, Cookie
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi import FastAPI, Request, Form, HTTPException, Cookie, status
+from fastapi.responses import HTMLResponse, RedirectResponse, 
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi import status
-import uuid
 from passlib.context import CryptContext
 import os
 
