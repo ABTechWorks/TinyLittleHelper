@@ -1,6 +1,16 @@
-accounts.json
-venv/
-*.pyc
+# Python
 __pycache__/
-*exe
+*.pyc
+.venv/
+venv/
+
+# Builds
 dist/
+build/
+*.exe
+
+# Logs
+*.log
+
+# OS
+.DS_Store

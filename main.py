@@ -276,11 +276,11 @@ async def download_helper(session: str = Cookie(None)):
         return RedirectResponse("/login")
 
     # Build the correct path relative to main.py
-    file_path = os.path.join(os.path.dirname(__file__), "dist", "tiny_helper.exe")
+    # file_path = os.path.join(os.path.dirname(__file__), "dist", "tiny_helper.exe")
 
     # Serve the file for download
     return FileResponse(
-        path=file_path,
+	path="static/dist/tiny_helper.exe",  # relative path inside repo
         filename="tiny_helper.exe",  # name browser sees
         media_type="application/octet-stream"
     )
