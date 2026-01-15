@@ -269,18 +269,12 @@ async def add_device_advanced(request: Request, session: str = Cookie(None)):
 # -------------------------
 # HELPER DOWNLOAD (EXE FILE)
 # -------------------------
+
 @app.get("/download/helper")
 async def download_helper(session: str = Cookie(None)):
-    # Check login session
+    # Only logged-in users can download
     if not session or session not in sessions:
         return RedirectResponse("/login")
 
-    # Build the correct path relative to main.py
-    # file_path = os.path.join(os.path.dirname(__file__), "dist", "tiny_helper.exe")
-
-    # Serve the file for download
-    return FileResponse(
-	path="static/dist/tiny_helper.exe",  # relative path inside repo
-        filename="tiny_helper.exe",  # name browser sees
-        media_type="application/octet-stream"
-    )
+    # Redirect the browser to Dropbox direct download
+    return RedirectResponse(DROPBOX_DIRECT_LINK)
