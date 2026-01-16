@@ -1,15 +1,21 @@
 import sqlite3
 import os
 
-DB_FILE = "tinyhelper.db"
+# Use Render's persistent mount path
+DB_PATH = "data/tinylittlehelper.db"
+
+# Ensure the /data folder exists
+os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+def get_db():
+    """Return a connection to the database."""
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    return conn
 
 def init_db():
-    """Initialize the SQLite database and tables."""
-    db_exists = os.path.exists(DB_FILE)
-    conn = sqlite3.connect(DB_FILE)
+    """Create tables if they don't exist."""
+    conn = get_db()
     cur = conn.cursor()
-
-    # Users table
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,35 +25,13 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
-
-    # Sessions table
     cur.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
-            session_id TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT UNIQUE NOT NULL,
             username TEXT NOT NULL,
             created_at TEXT NOT NULL
         )
     """)
-
-    # Devices table
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS devices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL,
-            device_name TEXT NOT NULL,
-            ip TEXT,
-            mac TEXT,
-            status TEXT,
-            last_seen TEXT,
-            UNIQUE(username, device_name)
-        )
-    """)
-
     conn.commit()
     conn.close()
-
-
-def get_db():
-    """Return a new connection to the database."""
-    conn = sqlite3.connect(DB_FILE)
-    return conn

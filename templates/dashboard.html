@@ -1,8 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Device Monitoring Dashboard</title>
   <link rel="stylesheet" href="/static/style.css">
+  <!-- PayPal SDK -->
+  <script src="https://www.paypal.com/sdk/js?client-id=BAAdlO5w8zzAgeNfusztLyQGhC79K4WWqLwaYXFngUKnRGkvaQ8tMIP3yVBGtBwPWcaBf2_duAJwFBPFYY&components=hosted-buttons&enable-funding=venmo&currency=USD"></script>
   <style>
     body {
       text-align: center;
@@ -11,6 +14,11 @@
       color: #333;
       margin: 0;
       padding: 20px;
+    }
+
+    .logo {
+      width: 120px;
+      margin-bottom: 20px;
     }
 
     h2 {
@@ -42,7 +50,7 @@
       font-size: 0.95rem;
     }
 
-    .download-link {
+    .download-link, .donate-button {
       display: inline-block;
       padding: 10px 20px;
       margin: 15px 0;
@@ -53,7 +61,7 @@
       transition: background-color 0.3s;
     }
 
-    .download-link:hover {
+    .download-link:hover, .donate-button:hover {
       background-color: #2980b9;
     }
 
@@ -110,6 +118,17 @@
       font-size: 0.85rem;
       color: #666;
     }
+
+    .donate-section {
+      margin-top: 40px;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 60%;
+      margin-left: auto;
+      margin-right: auto;
+    }
   </style>
 </head>
 <body>
@@ -117,59 +136,72 @@
   <div class="container">
     <img src="/static/images/tinyhelper.png" alt="TinyLittleHelper Logo" class="logo">
 
-  <header>
-    <h2>Device Monitoring Dashboard</h2>
-  </header>
+    <header>
+      <h2>Device Monitoring Dashboard</h2>
+    </header>
 
-  <section>
-    <h3>Add A New Device</h3>
-    <p>Or download the TinyLittleHelper client for automatic device registration:</p>
-    <a class="download-link" href="/download/helper" download>Download TinyLittleHelper</a>
-  </section>
+    <section>
+      <h3>Add A New Device</h3>
+      <p>Or download the TinyLittleHelper client for automatic device registration:</p>
+      <a class="download-link" href="/download/helper" download>Download TinyLittleHelper</a>
+    </section>
 
-  <section>
-    <h3>How To Use TinyLittleHelper</h3>
-    <small>
-      <br>1. Download the file<br>
-      2. Double-click TinyLittleHelper.exe<br>
-      3. Allow Windows security prompt if shown<br>
-      4. The helper will automatically register this device
-    </small>
-    <p>Devices can be added manually using the form below or automatically using the TinyLittleHelper client.</p>
-    <small>Devices added via the TinyLittleHelper client will automatically appear here with their real device name and status.</small>
-  </section>
+    <section>
+      <h3>How To Use TinyLittleHelper</h3>
+      <small>
+        1. Download the file<br>
+        2. Double-click TinyLittleHelper.exe<br>
+        3. Allow Windows security prompt if shown<br>
+        4. The helper will automatically register this device
+      </small>
+      <p>Devices can be added manually using the form below or automatically using the TinyLittleHelper client.</p>
+      <small>Devices added via the TinyLittleHelper client will automatically appear here with their real device name and status.</small>
+    </section>
 
-  <section>
-    <h3>Advanced Device Registration</h3>
-    <form method="POST" action="/add_device">
-      <input type="text" name="device_name" placeholder="Device Name" required>
-      <input type="text" name="device_ip" placeholder="IP Address">
-      <input type="text" name="device_mac" placeholder="MAC Address (optional)">
-      <button type="submit">Add Device</button>
-    </form>
-    <small>Device name plus at least IP or MAC is required.</small>
-    <small>Enter either MAC, IP, or both. If only IP is entered, the system will automatically detect the MAC when the device comes online.</small>
-  </section>
+    <section>
+      <h3>Advanced Device Registration</h3>
+      <form method="POST" action="/add_device">
+        <input type="text" name="device_name" placeholder="Device Name" required>
+        <input type="text" name="device_ip" placeholder="IP Address">
+        <input type="text" name="device_mac" placeholder="MAC Address (optional)">
+        <button type="submit">Add Device</button>
+      </form>
+      <small>Device name plus at least IP or MAC is required.</small>
+      <small>Enter either MAC, IP, or both. If only IP is entered, the system will automatically detect the MAC when the device comes online.</small>
+    </section>
 
-  <section>
-    <h3>Registered Devices</h3>
-    <table>
-      <tr>
-        <th>Account</th>
-        <th>Device</th>
-        <th>Status</th>
-        <th>Last Seen</th>
-      </tr>
-      {% for device, info in devices.items() %}
-      <tr>
-        <td>{{ username }}</td>
-        <td>{{ device }}</td>
-        <td>{{ info.get('status', 'offline') }}</td>
-        <td>{{ info.get('last_seen', '-') }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  </section>
+    <section>
+      <h3>Registered Devices</h3>
+      <table>
+        <tr>
+          <th>Account</th>
+          <th>Device</th>
+          <th>Status</th>
+          <th>Last Seen</th>
+        </tr>
+        {% for device, info in devices.items() %}
+        <tr>
+          <td>{{ username }}</td>
+          <td>{{ device }}</td>
+          <td>{{ info.get('status', 'offline') }}</td>
+          <td>{{ info.get('last_seen', '-') }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </section>
 
+    <!-- PayPal Donate Section -->
+    <section class="donate-section">
+      <h3>Keep TinyLittleHelper Free</h3>
+      <p>If you like this project, consider making a small donation to support its development.</p>
+      <div id="paypal-container-89QPZ7UVCYLD8" class="donate-button"></div>
+      <script>
+        paypal.HostedButtons({
+          hostedButtonId: "89QPZ7UVCYLD8",
+        }).render("#paypal-container-89QPZ7UVCYLD8");
+      </script>
+    </section>
+
+  </div>
 </body>
 </html>
