@@ -277,4 +277,4 @@ async def download_helper(session: str = Cookie(None)):
         return RedirectResponse("/login")
 
     # Redirect the browser to Dropbox direct download
-    return RedirectResponse(DROPBOX_DIRECT_LINK)
+    return RedirectResponse("https://www.dropbox.com/scl/fi/qugsh2z1srk1u6fz9mbqq/tiny_helper.exe?rlkey=13977e0oe18p289mhwzy4029u&st=0hr2cpur&dl=1")
