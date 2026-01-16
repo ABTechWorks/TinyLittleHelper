@@ -1,13 +1,26 @@
+/* ------------------------
+   Body & General Layout
+------------------------- */
 body {
   font-family: Helvetica, sans-serif;
   background-color: black;
   color: white;
-  margin: 20px;
+  margin: 0;
+  padding: 20px;
+  line-height: 1.5;
 }
 
+/* ------------------------
+   Tables (Dashboard)
+------------------------- */
 table {
   border-collapse: collapse;
   width: 100%;
+  max-width: 900px;
+  margin: 20px auto;
+  background-color: #111;
+  border-radius: 8px;
+  overflow: hidden;
 }
 
 th, td {
@@ -18,25 +31,30 @@ th, td {
 
 th {
   background-color: #111;
+  color: #fff;
 }
 
 .online {
-  color: blue;
+  color: #00f;
   font-weight: bold;
 }
 
 .offline {
-  color: red;
+  color: #f00;
   font-weight: bold;
 }
 
-.login-box {
-  max-width: 300px;
-  margin: 100px auto;
+/* ------------------------
+   Boxes & Forms
+------------------------- */
+.login-box, .center-box, .container {
+  max-width: 500px;
+  margin: 40px auto;
   padding: 20px;
-  border: 1px solid #555;
+  border-radius: 12px;
   background-color: #111;
   text-align: center;
+  box-shadow: 0 5px 20px rgba(0,0,0,0.5);
 }
 
 input, button {
@@ -45,36 +63,84 @@ input, button {
   margin: 10px 0;
   padding: 10px;
   font-size: 16px;
+  border-radius: 6px;
 }
+
 button {
   background-color: #222;
   color: white;
   border: none;
   cursor: pointer;
+  font-weight: 600;
+  transition: background-color 0.3s;
 }
+
 button:hover {
   background-color: #333;
 }
 
-.center-box {
-  max-width: 500px;
-  margin: 120px auto;
+/* ------------------------
+   Links & Buttons
+------------------------- */
+.primary-btn, .secondary-btn, .disabled-btn, .secondary {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin: 10px 0;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  text-align: center;
+  transition: background-color 0.3s;
+}
+
+.primary-btn {
+  background-color: #3498db;
+  color: white;
+}
+.primary-btn:hover { background-color: #2980b9; }
+
+.secondary-btn {
+  background-color: #2ecc71;
+  color: white;
+}
+.secondary-btn:hover { background-color: #27ae60; }
+
+.disabled-btn {
+  background-color: #555;
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+/* ------------------------
+   Small Text & Footer
+------------------------- */
+.small, .tagline {
+  font-size: 14px;
+  color: #aaa;
+  margin-top: 10px;
+}
+
+.footer {
+  margin-top: 20px;
+  font-size: 0.75rem;
+  color: #aaa;
   text-align: center;
 }
 
-.tagline {
-  color: #aaa;
-  margin-bottom: 30px;
+/* ------------------------
+   PayPal Button Container
+------------------------- */
+#paypal-container {
+  max-width: 300px;
+  margin: 15px auto;
+  text-align: center;
 }
 
-.secondary {
-  display: block;
-  margin-top: 15px;
-  color: #888;
-  text-decoration: none;
-}
-
-.small {
-  font-size: 14px;
-  color: #aaa;
+/* ------------------------
+   Images & Logos
+------------------------- */
+.logo {
+  width: 90px;
+  margin-bottom: 15px;
 }

@@ -16,27 +16,18 @@
       background-color: #f9f9f9;
       color: #333;
       margin: 0;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      height: 100vh;
+      padding: 20px;
     }
 
     .container {
       background: #fff;
       padding: 40px;
       border-radius: 16px;
-      width: 420px;
+      max-width: 420px;
+      width: 100%;
       text-align: center;
       box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-      animation: fadeUp 0.6s ease;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(15px); }
-      to { opacity: 1; transform: translateY(0); }
+      margin: 20px auto;
     }
 
     .logo {
@@ -96,13 +87,13 @@
       margin-top: 20px;
       font-size: 0.75rem;
       color: #aaa;
+      text-align: center;
     }
 
     /* PayPal container styling */
     #paypal-container {
-      margin-top: 15px;
-      display: flex;
-      justify-content: center;
+      max-width: 300px;
+      margin: 15px auto;
     }
   </style>
 </head>
@@ -123,20 +114,22 @@
     <div class="disabled-btn">Download Helper</div>
     <small>Sign up to enable the desktop helper download</small>
 
-<!-- PayPal Donate Button -->
-<div id="paypal-wrapper" style="width:100%; display:flex; justify-content:center; margin-top:15px;">
-  <div id="paypal-container"></div>
-</div>
+    <!-- PayPal Donate Button -->
+    <div id="paypal-container"></div>
+    <small>If you like Tiny Little Helper, consider supporting the project!</small>
+  </div>
 
-<script>
-  // Wait until the DOM is fully loaded
-  document.addEventListener("DOMContentLoaded", function() {
-    paypal.HostedButtons({
-      hostedButtonId: "89QPZ7UVCYLD8"
-    }).render("#paypal-container");
-  });
-</script>
+  <div class="footer">
+    Powered By Rich Dropout
+  </div>
 
+  <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      paypal.HostedButtons({
+        hostedButtonId: "89QPZ7UVCYLD8"
+      }).render("#paypal-container");
+    });
+  </script>
 
 </body>
 </html>
