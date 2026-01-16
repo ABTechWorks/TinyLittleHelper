@@ -62,6 +62,13 @@ def mark_offline_devices(timeout_seconds=60):
     conn.close()
 
 # -------------------------
+# INDEX (landing page)
+# -------------------------
+@app.get("/", response_class=HTMLResponse)
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+# -------------------------
 # Signup
 # -------------------------
 @app.post("/signup", response_class=HTMLResponse)
