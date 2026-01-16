@@ -1,23 +1,23 @@
 from datetime import datetime
 from fastapi import FastAPI, Request, Form, Cookie, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uuid
 import subprocess
 import re
-import os
+import sqlite3
+from db import init_db, get_db  # db.py contains init_db() and get_db()
 
+# -------------------------
+# Initialize
+# -------------------------
 app = FastAPI()
+init_db()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# -------------------------
-# In-memory storage (replace later with DB)
-# -------------------------
-accounts = {}
-sessions = {}
 
 # -------------------------
 # Utility: Resolve MAC from IP (Windows-safe)
@@ -43,24 +43,10 @@ def get_mac_from_ip(ip_address: str):
 
     return None
 
-# Offline Utility Function
-def mark_offline_devices(timeout_seconds=60):
-    now = datetime.utcnow()
-
-    for user in accounts.values():
-        for device in user["devices"].values():
-            last_seen = device.get("last_seen")
-            if last_seen:
-                delta = now - datetime.fromisoformat(last_seen)
-                if delta.total_seconds() > timeout_seconds:
-                    device["status"] = "offline"
-
 
 # -------------------------
-# Routes
+# Root route
 # -------------------------
-
-# Root route → landing page with signup/login options
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
@@ -69,49 +55,68 @@ async def index(request: Request):
 # -------------------------
 # Signup
 # -------------------------
+@app.post("/signup", response_class=HTMLResponse)
+async def signup(
+    request: Request,
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(...)
+):
+    conn = get_db()
+    cur = conn.cursor()
 
-# GET route to show signup form
-@app.get("/signup", response_class=HTMLResponse)
-async def signup_page(request: Request):
-    return templates.TemplateResponse("signup.html", {"request": request})
+    try:
+        cur.execute(
+            "INSERT INTO users (username, email, password, created_at) VALUES (?, ?, ?, ?)",
+            (username, email, password, datetime.utcnow().isoformat())
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return templates.TemplateResponse(
+            "signup.html",
+            {"request": request, "error": "Username already exists"}
+        )
+    finally:
+        conn.close()
 
-# POST route to handle signup form submission
-@app.post("/signup")
-async def signup(username: str = Form(...), password: str = Form(...)):
-    if username in accounts:
-        return JSONResponse(status_code=400, content={"error": "User already exists"})
+    return RedirectResponse("/login", status_code=302)
 
-    accounts[username] = {
-        "password": password,
-        "devices": {}  # unified device schema
-    }
-
-    # unique account token
-    accounts[username]["token"] = str(uuid.uuid4())
-
-    return RedirectResponse("/login", status_code=303)  # send user to login after signup
 
 # -------------------------
 # Login
 # -------------------------
+@app.post("/login", response_class=HTMLResponse)
+async def login(
+    request: Request,
+    username: str = Form(...),
+    password: str = Form(...)
+):
+    conn = get_db()
+    cur = conn.cursor()
 
-# GET route to show login form
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+    cur.execute(
+        "SELECT * FROM users WHERE username=? AND password=?",
+        (username, password)
+    )
+    user = cur.fetchone()
 
-# POST route to handle login form submission
-@app.post("/login")
-async def login(username: str = Form(...), password: str = Form(...)):
-    if username not in accounts or accounts[username]["password"] != password:
-        return JSONResponse(status_code=401, content={"error": "Invalid credentials"})
+    if not user:
+        conn.close()
+        return templates.TemplateResponse(
+            "login.html",
+            {"request": request, "error": "Invalid credentials"}
+        )
 
-    # create session
     session_id = str(uuid.uuid4())
-    sessions[session_id] = username
+    cur.execute(
+        "INSERT INTO sessions (session_id, username, created_at) VALUES (?, ?, ?)",
+        (session_id, username, datetime.utcnow().isoformat())
+    )
 
-    # redirect to dashboard and set cookie
-    response = RedirectResponse("/dashboard", status_code=303)
+    conn.commit()
+    conn.close()
+
+    response = RedirectResponse("/dashboard", status_code=302)
     response.set_cookie("session", session_id, httponly=True)
     return response
 
@@ -119,27 +124,50 @@ async def login(username: str = Form(...), password: str = Form(...)):
 # -------------------------
 # Dashboard
 # -------------------------
-
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, session: str = Cookie(None)):
-    # check if session is valid
-    if not session or session not in sessions:
+    if not session:
         return RedirectResponse("/login", status_code=303)
 
-    username = sessions[session]
-    devices = accounts[username].get("devices", {})
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT username FROM sessions WHERE session_id=?", (session,))
+    result = cur.fetchone()
+    if not result:
+        conn.close()
+        return RedirectResponse("/login", status_code=303)
 
-    # mark offline devices
-    mark_offline_devices()
+    username = result[0]
+
+    cur.execute("SELECT device_name, ip, mac, status, last_seen FROM devices WHERE username=?", (username,))
+    rows = cur.fetchall()
+    conn.close()
+
+    devices = {}
+    now = datetime.utcnow()
+    for row in rows:
+        device_name, ip, mac, status, last_seen = row
+        # mark offline if last_seen > 60 sec
+        if last_seen:
+            delta = now - datetime.fromisoformat(last_seen)
+            if delta.total_seconds() > 60:
+                status = "offline"
+        devices[device_name] = {
+            "ip": ip,
+            "mac": mac,
+            "status": status,
+            "last_seen": last_seen
+        }
 
     return templates.TemplateResponse(
         "dashboard.html",
-        {
-            "request": request,
-            "username": username,
-            "devices": devices
-        }
+        {"request": request, "username": username, "devices": devices}
     )
+
+
+# -------------------------
+# Add device (basic)
+# -------------------------
 @app.post("/add_device")
 async def add_device(
     request: Request,
@@ -148,133 +176,88 @@ async def add_device(
     mac: str = Form(None),
     session: str = Cookie(None)
 ):
-    if not session or session not in sessions:
+    if not session:
         return RedirectResponse("/login", status_code=303)
 
-    username = sessions[session]
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT username FROM sessions WHERE session_id=?", (session,))
+    result = cur.fetchone()
+    if not result:
+        conn.close()
+        return RedirectResponse("/login", status_code=303)
+    username = result[0]
 
-    if not device_name or (not ip and not mac):
-        return JSONResponse({"error": "Device name + IP or MAC required"}, status_code=400)
+    cur.execute("""
+        INSERT INTO devices (username, device_name, ip, mac, status, last_seen)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(username, device_name) DO UPDATE SET
+            ip=excluded.ip,
+            mac=excluded.mac,
+            status=excluded.status,
+            last_seen=excluded.last_seen
+    """, (
+        username,
+        device_name,
+        ip,
+        mac,
+        "online",
+        datetime.utcnow().isoformat()
+    ))
 
-    device_key = mac if mac else device_name
-    accounts[username].setdefault("devices", {})[device_key] = {
-        "status": "online",
-        "ip": ip,
-        "mac": mac,
-        "last_seen": datetime.utcnow().isoformat()
-    }
-
+    conn.commit()
+    conn.close()
     return RedirectResponse("/dashboard", status_code=303)
 
 
 # -------------------------
-# Device Heartbeat
+# Device heartbeat
 # -------------------------
-
 @app.post("/device_heartbeat")
 async def device_heartbeat(request: Request):
     data = await request.json()
-
     token = data.get("token")
-    # Find username based on token
-    username = next((u for u, a in accounts.items() if a.get("token") == token), None)
 
-    if not username:
+    conn = get_db()
+    cur = conn.cursor()
+
+    # Find username based on device token
+    cur.execute("SELECT username, device_name FROM devices WHERE device_name=?", (token,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
         return JSONResponse(status_code=401, content={"error": "Invalid token"})
 
-    device_name = data.get("device_name")
+    username, device_name = row
+
     ip = data.get("ip")
     mac = data.get("mac")
 
-    if not username or username not in accounts:
-        return JSONResponse(status_code=401, content={"error": "Invalid user"})
-
-    accounts[username].setdefault("devices", {})
-
-    # Try to resolve pending MAC
+    # Resolve MAC if missing
     if ip and (not mac or mac == "pending"):
-        resolved_mac = get_mac_from_ip(ip)
-        if resolved_mac:
-            mac = resolved_mac
+        mac = get_mac_from_ip(ip)
+        if not mac:
+            mac = "pending"
 
-    device_key = mac if mac else device_name
+    cur.execute("""
+        UPDATE devices SET ip=?, mac=?, status=?, last_seen=? 
+        WHERE username=? AND device_name=?
+    """, (ip, mac, "online", datetime.utcnow().isoformat(), username, device_name))
 
-    accounts[username]["devices"][device_key] = {
-        "status": "online",
-        "ip": ip,
-        "mac": mac,
-        "last_seen": datetime.utcnow().isoformat()
-    }
-
+    conn.commit()
+    conn.close()
     return JSONResponse({"status": "heartbeat received"})
 
 
 # -------------------------
-# OLD MANUAL DEVICE ADD
+# Download helper
 # -------------------------
-@app.post("/add_device")
-async def add_device(
-    device_name: str = Form(...),
-    session: str = Cookie(None)
-):
-    if not session or session not in sessions:
-        return JSONResponse(status_code=401, content={"error": "Not logged in"})
-
-    username = sessions[session]
-    accounts[username].setdefault("devices", {})
-
-    accounts[username]["devices"][device_name] = {
-        "status": "online",
-        "ip": None,
-        "mac": None
-    }
-
-    return RedirectResponse("/dashboard", status_code=303)
-
-# -------------------------
-# ADVANCED DEVICE ADD (IP / MAC)
-# -------------------------
-@app.post("/add_device_advanced")
-async def add_device_advanced(request: Request, session: str = Cookie(None)):
-    if not session or session not in sessions:
-        return JSONResponse(status_code=401, content={"error": "Not logged in"})
-
-    form = await request.form()
-    device_ip = form.get("device_ip")
-    device_mac = form.get("device_mac")
-    username = sessions[session]
-
-    accounts[username].setdefault("devices", {})
-
-    # If only IP provided → attempt MAC resolution
-    if device_ip and not device_mac:
-        device_mac = get_mac_from_ip(device_ip)
-        if not device_mac:
-            device_mac = "pending"
-
-    if not device_ip and not device_mac:
-        return JSONResponse(status_code=400, content={"error": "IP or MAC required"})
-
-    device_key = device_mac if device_mac != "pending" else device_ip
-
-    accounts[username]["devices"][device_key] = {
-        "status": "online" if device_mac != "pending" else "offline",
-        "ip": device_ip,
-        "mac": device_mac,
-	"last_seen": datetime.utcnow().isoformat()
-    }
-
-    return RedirectResponse("/dashboard", status_code=303)
-
-# -------------------------
-# HELPER DOWNLOAD (EXE FILE)
-# -------------------------
-
 @app.get("/download/helper")
 async def download_helper(session: str = Cookie(None)):
-    # Only logged-in users can download
-    if not session or session not in sessions:
+    if not session:
         return RedirectResponse("/login")
 
-    # Redirect the browser to Dropbox direct download
-    return RedirectResponse("https://www.dropbox.com/scl/fi/qugsh2z1srk1u6fz9mbqq/tiny_helper.exe?rlkey=13977e0oe18p289mhwzy4029u&st=0hr2cpur&dl=1")
+    # Dropbox direct download link
+    return RedirectResponse(
+        "https://www.dropbox.com/scl/fi/qugsh2z1srk1u6fz9mbqq/tiny_helper.exe?rlkey=13977e0oe18p289mhwzy4029u&dl=1"
+    )
