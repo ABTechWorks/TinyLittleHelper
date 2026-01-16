@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import FastAPI, Request, Form, Cookie, HTTPException
+from fastapi import FastAPI, Request, Form, Cookie
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -10,13 +10,13 @@ import os
 import sqlite3
 from db import init_db, get_db
 
-# --- Email ---
+# Email
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 
-load_dotenv()  # Load .env file
+load_dotenv()
 
 app = FastAPI()
 init_db()
@@ -24,9 +24,9 @@ init_db()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# -------------------------
-# Utility: Resolve MAC from IP (Windows-safe)
-# -------------------------
+# --------------------------------------------------
+# Utilities
+# --------------------------------------------------
 def get_mac_from_ip(ip_address: str):
     try:
         subprocess.run(
@@ -42,14 +42,20 @@ def get_mac_from_ip(ip_address: str):
         pass
     return None
 
+
 def mark_offline_devices(timeout_seconds=60):
     now = datetime.utcnow()
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("SELECT id FROM users")
     users = cur.fetchall()
-    for user_id, in users:
-        cur.execute("SELECT device_key, last_seen FROM devices WHERE user_id=?", (user_id,))
+
+    for (user_id,) in users:
+        cur.execute(
+            "SELECT device_key, last_seen FROM devices WHERE user_id=?",
+            (user_id,)
+        )
         for device_key, last_seen in cur.fetchall():
             if last_seen:
                 delta = now - datetime.fromisoformat(last_seen)
@@ -58,24 +64,28 @@ def mark_offline_devices(timeout_seconds=60):
                         "UPDATE devices SET status='offline' WHERE user_id=? AND device_key=?",
                         (user_id, device_key)
                     )
+
     conn.commit()
     conn.close()
 
-# -------------------------
-# INDEX (landing page)
-# -------------------------
+# --------------------------------------------------
+# INDEX
+# --------------------------------------------------
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# -------------------------
-# Signup
-# -------------------------
+# --------------------------------------------------
+# SIGNUP (GET)
+# --------------------------------------------------
 @app.get("/signup", response_class=HTMLResponse)
-async def get_signup(request: Request):
+async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
-@app.post("/signup", response_class=HTMLResponse)
+# --------------------------------------------------
+# SIGNUP (POST)
+# --------------------------------------------------
+@app.post("/signup")
 async def signup(
     request: Request,
     username: str = Form(...),
@@ -84,6 +94,7 @@ async def signup(
 ):
     conn = get_db()
     cur = conn.cursor()
+
     try:
         cur.execute(
             "INSERT INTO users (username, email, password, created_at) VALUES (?, ?, ?, ?)",
@@ -96,53 +107,45 @@ async def signup(
             "signup.html",
             {"request": request, "error": "Username already exists"}
         )
-    finally:
-        conn.close()
 
-    # --- Send Welcome Email ---
+    # Send welcome email
     try:
-        SMTP_HOST = os.getenv("SMTP_HOST")
-        SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-        SMTP_USER = os.getenv("SMTP_USER")
-        SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-        FROM_EMAIL = os.getenv("FROM_EMAIL")
-        DOMAIN = os.getenv("DOMAIN")
-        APP_NAME = os.getenv("APP_NAME", "Tiny Little Helper")
+        msg = MIMEMultipart()
+        msg["From"] = os.getenv("FROM_EMAIL")
+        msg["To"] = email
+        msg["Subject"] = f"Welcome to {os.getenv('APP_NAME','Tiny Little Helper')}"
 
-        subject = f"Welcome to {APP_NAME}!"
         body = f"""
 Hi {username},
 
-Your {APP_NAME} account has been successfully created!
+Your account has been created successfully.
 
-You can now log in at {DOMAIN}/login
-
-Thanks for joining!
+Log in here:
+{os.getenv('DOMAIN')}/login
 """
-
-        msg = MIMEMultipart()
-        msg["From"] = FROM_EMAIL
-        msg["To"] = email
-        msg["Subject"] = subject
         msg.attach(MIMEText(body, "plain"))
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+        with smtplib.SMTP(os.getenv("SMTP_HOST"), int(os.getenv("SMTP_PORT", 587))) as server:
             server.starttls()
-            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.login(os.getenv("SMTP_USER"), os.getenv("SMTP_PASSWORD"))
             server.send_message(msg)
     except Exception as e:
-        print("Error sending email:", e)
+        print("Email error:", e)
 
+    conn.close()
     return RedirectResponse("/login", status_code=302)
 
-# -------------------------
-# Login
-# -------------------------
+# --------------------------------------------------
+# LOGIN (GET)  <-- FIXES METHOD NOT ALLOWED
+# --------------------------------------------------
 @app.get("/login", response_class=HTMLResponse)
-async def get_login(request: Request):
+async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-@app.post("/login", response_class=HTMLResponse)
+# --------------------------------------------------
+# LOGIN (POST)
+# --------------------------------------------------
+@app.post("/login")
 async def login(
     request: Request,
     username: str = Form(...),
@@ -150,11 +153,13 @@ async def login(
 ):
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute(
         "SELECT id FROM users WHERE username=? AND password=?",
         (username, password)
     )
     user = cur.fetchone()
+
     if not user:
         conn.close()
         return templates.TemplateResponse(
@@ -167,6 +172,7 @@ async def login(
         "INSERT INTO sessions (session_id, username, created_at) VALUES (?, ?, ?)",
         (session_id, username, datetime.utcnow().isoformat())
     )
+
     conn.commit()
     conn.close()
 
@@ -174,83 +180,115 @@ async def login(
     response.set_cookie("session", session_id, httponly=True)
     return response
 
-# -------------------------
-# Dashboard
-# -------------------------
+# --------------------------------------------------
+# DASHBOARD (FIXED)
+# --------------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, session: str = Cookie(None)):
     if not session:
         return RedirectResponse("/login", status_code=303)
+
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("SELECT username FROM sessions WHERE session_id=?", (session,))
-    user = cur.fetchone()
-    if not user:
+    session_row = cur.fetchone()
+    if not session_row:
         conn.close()
         return RedirectResponse("/login", status_code=303)
-    username = user[0]
+
+    username = session_row[0]
+
+    cur.execute("SELECT id FROM users WHERE username=?", (username,))
+    user_row = cur.fetchone()
+    if not user_row:
+        conn.close()
+        return RedirectResponse("/login", status_code=303)
+
+    user_id = user_row[0]
+
     cur.execute(
-        "SELECT device_name, status, ip, mac, last_seen FROM devices WHERE username=?",
-        (username,)
+        "SELECT device_name, status, ip, mac, last_seen FROM devices WHERE user_id=?",
+        (user_id,)
     )
+
     devices = {
-        device_name: {"status": status, "ip": ip, "mac": mac, "last_seen": last_seen}
-        for device_name, status, ip, mac, last_seen in cur.fetchall()
+        name: {
+            "status": status,
+            "ip": ip,
+            "mac": mac,
+            "last_seen": last_seen
+        }
+        for name, status, ip, mac, last_seen in cur.fetchall()
     }
+
     conn.close()
     mark_offline_devices()
+
     return templates.TemplateResponse(
         "dashboard.html",
         {"request": request, "username": username, "devices": devices}
     )
 
-# -------------------------
-# Add Device (advanced)
-# -------------------------
+# --------------------------------------------------
+# ADD DEVICE
+# --------------------------------------------------
 @app.post("/add_device_advanced")
 async def add_device_advanced(request: Request, session: str = Cookie(None)):
     if not session:
-        return JSONResponse(status_code=401, content={"error": "Not logged in"})
+        return JSONResponse({"error": "Not logged in"}, status_code=401)
+
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("SELECT username FROM sessions WHERE session_id=?", (session,))
-    user = cur.fetchone()
-    if not user:
+    session_row = cur.fetchone()
+    if not session_row:
         conn.close()
-        return JSONResponse(status_code=401, content={"error": "Invalid session"})
-    username = user[0]
+        return JSONResponse({"error": "Invalid session"}, status_code=401)
+
+    username = session_row[0]
+
+    cur.execute("SELECT id FROM users WHERE username=?", (username,))
+    user_id = cur.fetchone()[0]
 
     form = await request.form()
+    device_name = form.get("device_name")
     device_ip = form.get("device_ip")
     device_mac = form.get("device_mac")
-    device_name = form.get("device_name")
-
-    if not device_name or (not device_ip and not device_mac):
-        conn.close()
-        return JSONResponse({"error": "Device name + IP or MAC required"}, status_code=400)
 
     if device_ip and not device_mac:
-        resolved_mac = get_mac_from_ip(device_ip)
-        device_mac = resolved_mac if resolved_mac else "pending"
+        device_mac = get_mac_from_ip(device_ip) or "pending"
 
     device_key = device_mac if device_mac != "pending" else device_name
+
     cur.execute("""
-        INSERT OR REPLACE INTO devices (username, device_key, device_name, ip, mac, status, last_seen)
+        INSERT OR REPLACE INTO devices
+        (user_id, device_key, device_name, ip, mac, status, last_seen)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (username, device_key, device_name, device_ip, device_mac,
-          "online" if device_mac != "pending" else "offline",
-          datetime.utcnow().isoformat()))
+    """, (
+        user_id,
+        device_key,
+        device_name,
+        device_ip,
+        device_mac,
+        "online" if device_mac != "pending" else "offline",
+        datetime.utcnow().isoformat()
+    ))
+
     conn.commit()
     conn.close()
+
     return RedirectResponse("/dashboard", status_code=303)
 
-# -------------------------
-# Helper Download
-# -------------------------
+# --------------------------------------------------
+# DOWNLOAD HELPER
+# --------------------------------------------------
 @app.get("/download/helper")
 async def download_helper(session: str = Cookie(None)):
     if not session:
         return RedirectResponse("/login")
+
     return RedirectResponse(
-        "https://www.dropbox.com/scl/fi/qugsh2z1srk1u6fz9mbqq/tiny_helper.exe?rlkey=13977e0oe18p289mhwzy4029u&st=0hr2cpur&dl=1"
+        "https://www.dropbox.com/scl/fi/qugsh2z1srk1u6fz9mbqq/tiny_helper.exe?dl=1"
     )
