@@ -27,7 +27,7 @@
       width: 100%;
       text-align: center;
       box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-      margin: 20px auto;
+      margin: 40px auto;
     }
 
     .logo {
@@ -93,7 +93,7 @@
     /* PayPal container styling */
     #paypal-container {
       max-width: 300px;
-      margin: 15px auto;
+      margin: 20px auto 0;
     }
   </style>
 </head>
@@ -124,6 +124,7 @@
   </div>
 
   <script>
+    // Render PayPal hosted button safely after DOM loads
     document.addEventListener("DOMContentLoaded", function() {
       paypal.HostedButtons({
         hostedButtonId: "89QPZ7UVCYLD8"

@@ -71,6 +71,10 @@ async def index(request: Request):
 # -------------------------
 # Signup
 # -------------------------
+@app.get("/signup", response_class=HTMLResponse)
+async def get_signup(request: Request):
+    return templates.TemplateResponse("signup.html", {"request": request})
+
 @app.post("/signup", response_class=HTMLResponse)
 async def signup(
     request: Request,
@@ -87,6 +91,7 @@ async def signup(
         )
         conn.commit()
     except sqlite3.IntegrityError:
+        conn.close()
         return templates.TemplateResponse(
             "signup.html",
             {"request": request, "error": "Username already exists"}
@@ -133,6 +138,10 @@ Thanks for joining!
 # -------------------------
 # Login
 # -------------------------
+@app.get("/login", response_class=HTMLResponse)
+async def get_login(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
 @app.post("/login", response_class=HTMLResponse)
 async def login(
     request: Request,
