@@ -1,21 +1,19 @@
 import sqlite3
 import os
 
-# Use Render's persistent mount path
 DB_PATH = "data/tinylittlehelper.db"
 
-# Ensure the /data folder exists
 os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
 
 def get_db():
-    """Return a connection to the database."""
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     return conn
 
 def init_db():
-    """Create tables if they don't exist."""
     conn = get_db()
     cur = conn.cursor()
+
+    # USERS
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,6 +23,8 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+
+    # SESSIONS
     cur.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,5 +33,21 @@ def init_db():
             created_at TEXT NOT NULL
         )
     """)
+
+    # DEVICES  <-- THIS WAS MISSING
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS devices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            device_key TEXT NOT NULL,
+            device_name TEXT NOT NULL,
+            ip TEXT,
+            mac TEXT,
+            status TEXT,
+            last_seen TEXT,
+            UNIQUE(user_id, device_key)
+        )
+    """)
+
     conn.commit()
     conn.close()

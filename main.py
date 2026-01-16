@@ -292,3 +292,85 @@ async def download_helper(session: str = Cookie(None)):
     return RedirectResponse(
         "https://www.dropbox.com/scl/fi/qugsh2z1srk1u6fz9mbqq/tiny_helper.exe?dl=1"
     )
+
+# --------------------------------------------------
+# LOGOUT
+# --------------------------------------------------
+@app.get("/logout")
+async def logout(session: str = Cookie(None)):
+    if session:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM sessions WHERE session_id=?", (session,))
+        conn.commit()
+        conn.close()
+
+    response = RedirectResponse("/", status_code=302)
+    response.delete_cookie("session")
+    return response
+
+# --------------------------------------------------
+# CHANGE PASSWORD (GET)
+# --------------------------------------------------
+@app.get("/change-password", response_class=HTMLResponse)
+async def change_password_page(request: Request, session: str = Cookie(None)):
+    if not session:
+        return RedirectResponse("/login", status_code=303)
+
+    return templates.TemplateResponse(
+        "change_password.html",
+        {"request": request}
+    )
+
+# --------------------------------------------------
+# CHANGE PASSWORD (POST)
+# --------------------------------------------------
+@app.post("/change-password")
+async def change_password(
+    request: Request,
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    session: str = Cookie(None)
+):
+    if not session:
+        return RedirectResponse("/login", status_code=303)
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT username FROM sessions WHERE session_id=?",
+        (session,)
+    )
+    session_row = cur.fetchone()
+    if not session_row:
+        conn.close()
+        return RedirectResponse("/login", status_code=303)
+
+    username = session_row[0]
+
+    cur.execute(
+        "SELECT password FROM users WHERE username=?",
+        (username,)
+    )
+    row = cur.fetchone()
+
+    if not row or row[0] != current_password:
+        conn.close()
+        return templates.TemplateResponse(
+            "change_password.html",
+            {
+                "request": request,
+                "error": "Current password is incorrect"
+            }
+        )
+
+    cur.execute(
+        "UPDATE users SET password=? WHERE username=?",
+        (new_password, username)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return RedirectResponse("/dashboard", status_code=302)

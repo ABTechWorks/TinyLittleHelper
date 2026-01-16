@@ -144,3 +144,24 @@ button:hover {
   width: 90px;
   margin-bottom: 15px;
 }
+
+/* ---- PayPal layout isolation fix ---- */
+
+#paypal-container {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin: 20px auto;
+}
+
+/* Prevent PayPal injected elements from collapsing layout */
+#paypal-container * {
+  box-sizing: border-box;
+}
+
+/* Ensure content AFTER PayPal is not affected */
+.after-donate {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
