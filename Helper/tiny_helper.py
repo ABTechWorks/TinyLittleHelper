@@ -9,17 +9,44 @@ import shutil
 import sqlite3
 import tempfile
 from pathlib import Path
+import json
 
 # =====================================================
 # CONFIG
 # =====================================================
 
-BACKEND_BASE = "http://127.0.0.1:8000"
-REGISTER_ENDPOINT = f"{BACKEND_BASE}/add_device_advanced"
+BACKEND_BASE = "https://mytinylittlehelper.com"  # use your real backend
+REGISTER_ENDPOINT = f"{BACKEND_BASE}/add_device_advanced_token"
 HEARTBEAT_ENDPOINT = f"{BACKEND_BASE}/device_heartbeat"
+HEARTBEAT_INTERVAL = 30  # seconds
 
-DEVICE_TOKEN = "REPLACE_ME"
-HEARTBEAT_INTERVAL = 30
+# Local token storage
+TOKEN_FILE = Path("device_token.txt")
+
+# =====================================================
+# LOGGING FUNCTION
+# =====================================================
+
+def log(msg):
+    try:
+        with open("helper_debug.log", "a") as f:
+            f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - {msg}\n")
+    except:
+        pass
+
+# =====================================================
+# DEVICE TOKEN
+# =====================================================
+
+def get_device_token():
+    if TOKEN_FILE.exists():
+        return TOKEN_FILE.read_text().strip()
+    else:
+        token = str(uuid.uuid4())
+        TOKEN_FILE.write_text(token)
+        return token
+
+DEVICE_TOKEN = get_device_token()
 
 # =====================================================
 # DEVICE INFO
@@ -140,8 +167,14 @@ def register_device():
 
     try:
         r = requests.post(REGISTER_ENDPOINT, json=payload, timeout=10)
-        return r.status_code == 200
-    except Exception:
+        if r.status_code == 200:
+            log(f"Device registered successfully: {r.text}")
+            return True
+        else:
+            log(f"Registration failed ({r.status_code}): {r.text}")
+            return False
+    except Exception as e:
+        log(f"Registration exception: {e}")
         return False
 
 def send_heartbeat():
@@ -154,19 +187,21 @@ def send_heartbeat():
     }
 
     try:
-        requests.post(HEARTBEAT_ENDPOINT, json=payload, timeout=5)
-    except Exception:
-        pass
+        r = requests.post(HEARTBEAT_ENDPOINT, json=payload, timeout=5)
+        if r.status_code != 200:
+            log(f"Heartbeat failed ({r.status_code})")
+    except Exception as e:
+        log(f"Heartbeat exception: {e}")
 
 # =====================================================
-# MAIN
+# MAIN LOOP
 # =====================================================
 
 def main():
-    if DEVICE_TOKEN == "REPLACE_ME":
-        sys.exit(1)
+    log("=== Helper starting ===")
 
     if not register_device():
+        log("Initial registration failed. Exiting.")
         sys.exit(1)
 
     while True:
