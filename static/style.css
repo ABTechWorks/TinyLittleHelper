@@ -182,3 +182,9 @@ button:hover {
   width: 100%;
   text-align: center;
 }
+/* ------------------------
+   FORCE Registered Devices row text to white
+------------------------- */
+.container table tbody td {
+  color: #fff !important;
+}
