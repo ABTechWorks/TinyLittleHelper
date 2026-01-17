@@ -23,24 +23,42 @@ table {
   overflow: hidden;
 }
 
-th, td {
+/* ------------------------
+   Registered Devices Table Fix
+------------------------- */
+#devices-table {
+  background-color: #000; /* black background */
+  color: #fff;            /* white text */
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 900px;
+  margin: 20px auto;
+}
+
+#devices-table th, #devices-table td {
   border: 1px solid #444;
   padding: 10px;
   text-align: left;
 }
 
-th {
+#devices-table th {
   background-color: #111;
   color: #fff;
 }
 
+#devices-table td {
+  background-color: #000;
+  color: #fff;
+}
+
+/* Status colors */
 .online {
-  color: #00f;
+  color: #0f0; /* green for online */
   font-weight: bold;
 }
 
 .offline {
-  color: #f00;
+  color: #f00; /* red for offline */
   font-weight: bold;
 }
 
@@ -146,7 +164,6 @@ button:hover {
 }
 
 /* ---- PayPal layout isolation fix ---- */
-
 #paypal-container {
   display: block;
   width: 100%;
