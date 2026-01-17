@@ -24,7 +24,6 @@ load_dotenv()
 # --------------------------------------------------
 app = FastAPI()
 
-# INIT DB ON STARTUP (ONE TIME)
 print("🚀 Initializing DB...")
 init_db()
 
@@ -36,11 +35,9 @@ templates = Jinja2Templates(directory="templates")
 # --------------------------------------------------
 def get_mac_from_ip(ip_address: str):
     try:
-        subprocess.run(
-            ["ping", ip_address, "-n", "1"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
+        subprocess.run(["ping", ip_address, "-n", "1"],
+                       stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL)
         arp_output = subprocess.check_output(["arp", "-a"], text=True)
         match = re.search(rf"{re.escape(ip_address)}\s+([a-fA-F0-9:-]+)", arp_output)
         if match:
@@ -91,12 +88,10 @@ async def signup_page(request: Request):
 
 
 @app.post("/signup")
-async def signup(
-    request: Request,
-    username: str = Form(...),
-    email: str = Form(...),
-    password: str = Form(...)
-):
+async def signup(request: Request,
+                 username: str = Form(...),
+                 email: str = Form(...),
+                 password: str = Form(...)):
     conn = get_db()
     cur = conn.cursor()
 
@@ -113,15 +108,13 @@ async def signup(
             {"request": request, "error": "Username already exists"}
         )
 
-    # Send welcome email
     try:
         msg = MIMEMultipart()
         msg["From"] = os.getenv("FROM_EMAIL")
         msg["To"] = email
         msg["Subject"] = f"Welcome to {os.getenv('APP_NAME','Tiny Little Helper')}"
 
-        body = f"""
-Hi {username},
+        body = f"""Hi {username},
 
 Your account has been created successfully.
 
@@ -149,11 +142,9 @@ async def login_page(request: Request):
 
 
 @app.post("/login")
-async def login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...)
-):
+async def login(request: Request,
+                username: str = Form(...),
+                password: str = Form(...)):
     conn = get_db()
     cur = conn.cursor()
 
@@ -195,29 +186,30 @@ async def dashboard(request: Request, session: str = Cookie(None)):
     cur = conn.cursor()
 
     cur.execute("SELECT username FROM sessions WHERE session_id=?", (session,))
-    session_row = cur.fetchone()
-    if not session_row:
+    row = cur.fetchone()
+    if not row:
         conn.close()
         return RedirectResponse("/login", status_code=303)
 
-    username = session_row[0]
+    username = row[0]
 
     cur.execute("SELECT id FROM users WHERE username=?", (username,))
     user_id = cur.fetchone()[0]
 
-    cur.execute(
-        "SELECT device_name, status, ip, mac, last_seen FROM devices WHERE user_id=? OR user_id IS NULL",
-        (user_id,)
-    )
+    cur.execute("""
+        SELECT device_name, status, ip, mac, last_seen, recent_sites
+        FROM devices WHERE user_id=?
+    """, (user_id,))
 
     devices = {
         name: {
             "status": status,
             "ip": ip,
             "mac": mac,
-            "last_seen": last_seen
+            "last_seen": last_seen,
+            "recent_sites": recent_sites
         }
-        for name, status, ip, mac, last_seen in cur.fetchall()
+        for name, status, ip, mac, last_seen, recent_sites in cur.fetchall()
     }
 
     conn.close()
@@ -229,7 +221,39 @@ async def dashboard(request: Request, session: str = Cookie(None)):
     )
 
 # --------------------------------------------------
-# TOKEN DEVICE REGISTRATION (helper exe)
+# DELETE DEVICE ✅
+# --------------------------------------------------
+@app.post("/delete_device")
+async def delete_device(device_key: str = Form(...), session: str = Cookie(None)):
+    if not session:
+        raise HTTPException(status_code=401)
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("SELECT username FROM sessions WHERE session_id=?", (session,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=401)
+
+    username = row[0]
+
+    cur.execute("SELECT id FROM users WHERE username=?", (username,))
+    user_id = cur.fetchone()[0]
+
+    cur.execute(
+        "DELETE FROM devices WHERE user_id=? AND device_key=?",
+        (user_id, device_key)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return RedirectResponse("/dashboard", status_code=303)
+
+# --------------------------------------------------
+# TOKEN DEVICE REGISTRATION (helper)
 # --------------------------------------------------
 @app.post("/add_device_advanced_token")
 async def add_device_advanced_token(request: Request):
@@ -263,10 +287,10 @@ async def add_device_advanced_token(request: Request):
     conn.commit()
     conn.close()
 
-    return {"status": "ok", "token": token}
+    return {"status": "ok"}
 
 # --------------------------------------------------
-# HEARTBEAT (for helper exe devices)
+# HEARTBEAT
 # --------------------------------------------------
 @app.post("/device_heartbeat")
 async def device_heartbeat(request: Request):
@@ -279,12 +303,8 @@ async def device_heartbeat(request: Request):
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute(
-        "SELECT id FROM devices WHERE device_key=?",
-        (token,)
-    )
-    device = cur.fetchone()
-    if not device:
+    cur.execute("SELECT id FROM devices WHERE device_key=?", (token,))
+    if not cur.fetchone():
         conn.close()
         return JSONResponse({"error": "Device not found"}, status_code=404)
 
@@ -295,59 +315,7 @@ async def device_heartbeat(request: Request):
 
     conn.commit()
     conn.close()
-
     return {"status": "ok"}
-
-# --------------------------------------------------
-# WEB SESSION-BASED DEVICE REGISTRATION
-# --------------------------------------------------
-@app.post("/add_device_advanced")
-async def add_device_advanced(request: Request, session: str = Cookie(None)):
-    if not session:
-        return JSONResponse({"error": "Not logged in"}, status_code=401)
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT username FROM sessions WHERE session_id=?", (session,))
-    session_row = cur.fetchone()
-    if not session_row:
-        conn.close()
-        return JSONResponse({"error": "Invalid session"}, status_code=401)
-
-    username = session_row[0]
-
-    cur.execute("SELECT id FROM users WHERE username=?", (username,))
-    user_id = cur.fetchone()[0]
-
-    form = await request.form()
-    device_name = form.get("device_name")
-    device_ip = form.get("device_ip")
-    device_mac = form.get("device_mac")
-
-    if device_ip and not device_mac:
-        device_mac = get_mac_from_ip(device_ip) or "pending"
-
-    device_key = device_mac if device_mac != "pending" else device_name
-
-    cur.execute("""
-        INSERT OR REPLACE INTO devices
-        (user_id, device_key, device_name, ip, mac, status, last_seen)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, (
-        user_id,
-        device_key,
-        device_name,
-        device_ip,
-        device_mac,
-        "online" if device_mac != "pending" else "offline",
-        datetime.utcnow().isoformat()
-    ))
-
-    conn.commit()
-    conn.close()
-
-    return RedirectResponse("/dashboard", status_code=303)
 
 # --------------------------------------------------
 # DOWNLOAD HELPER
@@ -358,7 +326,7 @@ async def download_helper(session: str = Cookie(None)):
         return RedirectResponse("/login")
 
     return RedirectResponse(
-        "https://www.dropbox.com/scl/fi/pugk0sov7ny4kqz7defj6/tiny_helper.exe?rlkey=418z96aq83xxu0o0mwwluu4h1&st=cgak3y0x&dl=1"
+        "https://www.dropbox.com/scl/fi/pugk0sov7ny4kqz7defj6/tiny_helper.exe?dl=1"
     )
 
 # --------------------------------------------------
@@ -376,67 +344,3 @@ async def logout(session: str = Cookie(None)):
     response = RedirectResponse("/", status_code=302)
     response.delete_cookie("session")
     return response
-
-# --------------------------------------------------
-# CHANGE PASSWORD
-# --------------------------------------------------
-@app.get("/change-password", response_class=HTMLResponse)
-async def change_password_page(request: Request, session: str = Cookie(None)):
-    if not session:
-        return RedirectResponse("/login", status_code=303)
-
-    return templates.TemplateResponse(
-        "change_password.html",
-        {"request": request}
-    )
-
-
-@app.post("/change-password")
-async def change_password(
-    request: Request,
-    current_password: str = Form(...),
-    new_password: str = Form(...),
-    session: str = Cookie(None)
-):
-    if not session:
-        return RedirectResponse("/login", status_code=303)
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT username FROM sessions WHERE session_id=?",
-        (session,)
-    )
-    session_row = cur.fetchone()
-    if not session_row:
-        conn.close()
-        return RedirectResponse("/login", status_code=303)
-
-    username = session_row[0]
-
-    cur.execute(
-        "SELECT password FROM users WHERE username=?",
-        (username,)
-    )
-    row = cur.fetchone()
-
-    if not row or row[0] != current_password:
-        conn.close()
-        return templates.TemplateResponse(
-            "change_password.html",
-            {
-                "request": request,
-                "error": "Current password is incorrect"
-            }
-        )
-
-    cur.execute(
-        "UPDATE users SET password=? WHERE username=?",
-        (new_password, username)
-    )
-
-    conn.commit()
-    conn.close()
-
-    return RedirectResponse("/dashboard", status_code=302)

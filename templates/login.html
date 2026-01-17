@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Login</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login – TinyLittleHelper</title>
   <link rel="stylesheet" href="/static/style.css">
+
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -13,27 +16,30 @@
       justify-content: center;
       min-height: 100vh;
       margin: 0;
+      padding: 10px;
     }
 
     .login-container {
       display: flex;
       flex-direction: column;
       align-items: center;
+      width: 100%;
     }
 
     .logo {
       width: 120px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
 
     .login-box {
       background-color: #fff;
-      padding: 30px 35px;
+      padding: 25px 20px;
       width: 100%;
       max-width: 420px;
       border-radius: 12px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       text-align: center;
+      box-sizing: border-box;
     }
 
     h1 {
@@ -44,7 +50,7 @@
     .small {
       font-size: 0.95rem;
       color: #666;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
 
     form input {
@@ -54,6 +60,7 @@
       border-radius: 6px;
       border: 1px solid #ccc;
       font-size: 0.95rem;
+      box-sizing: border-box;
     }
 
     form button {
@@ -92,8 +99,24 @@
     a:hover {
       text-decoration: underline;
     }
+
+    @media (max-width: 480px) {
+      .login-box {
+        padding: 20px 15px;
+      }
+
+      form input, form button {
+        font-size: 0.9rem;
+        padding: 10px;
+      }
+
+      .small {
+        font-size: 0.85rem;
+      }
+    }
   </style>
 </head>
+
 <body>
 
   <div class="login-container">

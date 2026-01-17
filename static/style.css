@@ -2,7 +2,7 @@
    Body & General Layout
 ------------------------- */
 body {
-  font-family: Helvetica, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: black;
   color: white;
   margin: 0;
@@ -10,64 +10,16 @@ body {
   line-height: 1.5;
 }
 
-/* ------------------------
-   Tables (Dashboard)
-------------------------- */
-table {
-  border-collapse: collapse;
-  width: 100%;
-  max-width: 900px;
-  margin: 20px auto;
-  background-color: #111;
-  border-radius: 8px;
-  overflow: hidden;
+* {
+  box-sizing: border-box;
 }
 
 /* ------------------------
-   Registered Devices Table Fix
+   Containers & Boxes
 ------------------------- */
-#devices-table {
-  background-color: #000; /* black background */
-  color: #fff;            /* white text */
-  border-collapse: collapse;
-  width: 100%;
-  max-width: 900px;
-  margin: 20px auto;
-}
-
-#devices-table th, #devices-table td {
-  border: 1px solid #fff;
-  padding: 10px;
-  text-align: left;
-}
-
-#devices-table th {
-  background-color: #111;
-  color: #fff;
-}
-
-#devices-table td {
-  background-color: #000;
-  color: #fff;
-}
-
-/* Status colors */
-.online {
-  color: #0f0; /* green for online */
-  font-weight: bold;
-}
-
-.offline {
-  color: #f00; /* red for offline */
-  font-weight: bold;
-}
-
-/* ------------------------
-   Boxes & Forms
-------------------------- */
-.login-box, .center-box, .container {
+.login-box, .center-box, .container, .signup-box {
   max-width: 500px;
-  margin: 40px auto;
+  margin: 20px auto;
   padding: 20px;
   border-radius: 12px;
   background-color: #111;
@@ -75,15 +27,17 @@ table {
   box-shadow: 0 5px 20px rgba(0,0,0,0.5);
 }
 
-input, button {
+input, button, .download-link {
   display: block;
   width: 100%;
   margin: 10px 0;
-  padding: 10px;
+  padding: 12px;
   font-size: 16px;
   border-radius: 6px;
+  border: 1px solid #333;
 }
 
+/* Buttons */
 button {
   background-color: #222;
   color: white;
@@ -97,10 +51,7 @@ button:hover {
   background-color: #333;
 }
 
-/* ------------------------
-   Links & Buttons
-------------------------- */
-.primary-btn, .secondary-btn, .disabled-btn, .secondary {
+.primary-btn, .secondary-btn, .disabled-btn {
   display: block;
   width: 100%;
   padding: 12px;
@@ -131,39 +82,78 @@ button:hover {
 }
 
 /* ------------------------
-   Small Text & Footer
+   Tables (Dashboard)
 ------------------------- */
-.small, .tagline {
+.table-wrapper {
+  overflow-x: auto; /* scrollable on mobile */
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 900px;
+  margin: 20px auto;
+  background-color: #111;
+  border-radius: 8px;
+  overflow: hidden;
+  min-width: 600px; /* keeps table readable on small screens */
+}
+
+#devices-table {
+  background-color: #000;
+  color: #fff;
+}
+
+#devices-table th, #devices-table td {
+  border: 1px solid #fff;
+  padding: 10px;
+  text-align: left;
+}
+
+#devices-table th {
+  background-color: #111;
+  color: #fff;
+}
+
+#devices-table td {
+  background-color: #000;
+  color: #fff;
+}
+
+/* Status colors */
+.online { color: #0f0; font-weight: bold; }
+.offline { color: #f00; font-weight: bold; }
+
+/* ------------------------
+   Text & Links
+------------------------- */
+small, .tagline {
   font-size: 14px;
   color: #aaa;
   margin-top: 10px;
 }
 
-.footer {
-  margin-top: 20px;
-  font-size: 0.75rem;
-  color: #aaa;
-  text-align: center;
+a {
+  color: #3498db;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
 }
 
 /* ------------------------
-   PayPal Button Container
-------------------------- */
-#paypal-container {
-  max-width: 300px;
-  margin: 15px auto;
-  text-align: center;
-}
-
-/* ------------------------
-   Images & Logos
+   Logos & Images
 ------------------------- */
 .logo {
   width: 90px;
   margin-bottom: 15px;
 }
 
-/* ---- PayPal layout isolation fix ---- */
+/* ------------------------
+   PayPal Button Container
+------------------------- */
 #paypal-container {
   display: block;
   width: 100%;
@@ -171,19 +161,52 @@ button:hover {
   margin: 20px auto;
 }
 
-/* Prevent PayPal injected elements from collapsing layout */
 #paypal-container * {
   box-sizing: border-box;
 }
 
-/* Ensure content AFTER PayPal is not affected */
 .after-donate {
   display: block;
   width: 100%;
   text-align: center;
 }
+
 /* ------------------------
-   FORCE Registered Devices row text to white
+   Responsive Layout
+------------------------- */
+@media screen and (max-width: 768px) {
+  body {
+    padding: 15px;
+  }
+
+  .login-box, .signup-box, .container, .center-box {
+    padding: 15px;
+    margin: 15px auto;
+  }
+
+  input, button, .download-link, .primary-btn, .secondary-btn {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  table, #devices-table {
+    font-size: 14px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  input, button, .download-link, .primary-btn, .secondary-btn {
+    font-size: 13px;
+    padding: 8px;
+  }
+
+  table, #devices-table {
+    font-size: 12px;
+  }
+}
+
+/* ------------------------
+   Force table text white
 ------------------------- */
 .container table tbody td {
   color: #fff !important;

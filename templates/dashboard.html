@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Device Monitoring Dashboard</title>
 
   <link rel="stylesheet" href="/static/style.css">
@@ -31,7 +32,7 @@
     }
 
     section {
-      margin: 40px auto;
+      margin: 30px auto;
       padding: 20px;
       background-color: #fff;
       border-radius: 12px;
@@ -59,6 +60,27 @@
       color: white;
     }
 
+    .device-row {
+      cursor: pointer;
+    }
+
+    .device-row:hover {
+      background-color: #f1f7ff;
+    }
+
+    .device-details {
+      display: none;
+      background-color: #fafafa;
+    }
+
+    .details-box {
+      text-align: left;
+      padding: 15px;
+      border-left: 4px solid #3498db;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
     .download-link {
       display: inline-block;
       padding: 10px 20px;
@@ -72,21 +94,6 @@
       background-color: #2980b9;
     }
 
-    form input {
-      padding: 10px;
-      margin: 5px;
-      width: 200px;
-    }
-
-    form button {
-      padding: 10px 20px;
-      background-color: #2ecc71;
-      border: none;
-      color: white;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-
     .donate-section {
       width: 90%;
       max-width: 500px;
@@ -95,11 +102,6 @@
     #paypal-container {
       margin: 20px auto;
       max-width: 320px;
-    }
-
-    .after-donate {
-      width: 100%;
-      display: block;
     }
 
     .top-links {
@@ -112,99 +114,163 @@
       color: #3498db;
       font-weight: 600;
     }
+
+    /* Mobile responsiveness */
+    @media (max-width: 600px) {
+      table, th, td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      th {
+        text-align: left;
+      }
+
+      section {
+        width: 95%;
+        padding: 10px;
+      }
+
+      .details-box {
+        font-size: 13px;
+      }
+
+      .recent-sites-box {
+        display: none;
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #eef2f7;
+        border-left: 4px solid #3498db;
+        border-radius: 6px;
+      }
+
+      .toggle-sites {
+        cursor: pointer;
+        color: #3498db;
+        font-weight: 600;
+        margin-top: 10px;
+        display: inline-block;
+      }
+    }
   </style>
 </head>
 
 <body>
 
-  <div class="container">
+<div class="container">
 
-    <div class="top-links">
-      <a href="/change-password">Change Password</a> |
-      <a href="/logout">Logout</a>
+  <div class="top-links">
+    <a href="/change-password">Change Password</a> |
+    <a href="/logout">Logout</a>
+  </div>
+
+  <img src="/static/images/tinyhelper.png" alt="TinyLittleHelper Logo" class="logo">
+
+  <h2>Device Monitoring Dashboard</h2>
+
+  <section>
+    <h3>Download Helper</h3>
+    <p>Install on the device you want to monitor:</p>
+    <a class="download-link" href="/download/helper">Download TinyLittleHelper</a>
+  </section>
+
+  <section>
+    <h3>Device Monitoring – How It Works</h3>
+    <div style="text-align:left;padding:14px;background:#f4f6f8;border-left:4px solid #3498db;border-radius:6px;">
+      <ul>
+        <li>Monitoring is done via the TinyLittleHelper app — not IP pings</li>
+        <li>You must be logged into your account to download the helper</li>
+        <li>Install the helper on the exact device you want to monitor</li>
+        <li>The helper runs quietly in the background</li>
+        <li>Refresh this page after installation</li>
+      </ul>
     </div>
+  </section>
 
-    <img src="/static/images/tinyhelper.png" alt="TinyLittleHelper Logo" class="logo">
+  <section>
+    <h3>Registered Devices</h3>
+    <table>
+      <tr>
+        <th>Account</th>
+        <th>Device</th>
+        <th>Status</th>
+        <th>Last Seen</th>
+      </tr>
 
-    <h2>Device Monitoring Dashboard</h2>
+      {% for device, info in devices.items() %}
+      <tr class="device-row" onclick="toggleDevice('{{ device }}')">
+        <td>{{ username }}</td>
+        <td><strong>{{ device }}</strong></td>
+        <td>{{ info.get('status','offline') }}</td>
+        <td>{{ info.get('last_seen','-') }}</td>
+      </tr>
 
-    <section>
-      <h3>Download Helper</h3>
-      <p>Automatically register this device:</p>
-      <a class="download-link" href="/download/helper">Download TinyLittleHelper</a>
-    </section>
+      <tr id="details-{{ device }}" class="device-details">
+        <td colspan="4">
+          <div class="details-box">
+            <p><strong>Device ID:</strong> {{ device }}</p>
+            <p><strong>IP:</strong> {{ info.get('ip','N/A') }}</p>
+            <p><strong>OS:</strong> {{ info.get('os','Unknown') }}</p>
+            <p style="color:#777;font-size:13px;">More activity data will appear here.</p>
 
-    <section>
-  <h3>Device Monitoring – How It Works</h3>
+            {% if info.recent_sites %}
+              <span class="toggle-sites" onclick="toggleSites('{{ device }}')">Show/Hide Recent Sites</span>
+              <div id="recent-{{ device }}" class="recent-sites-box">
+                <ul>
+                  {% for site in info.recent_sites | safe | loads %}
+                  <li>
+                    <strong>{{ site.browser }}</strong> —
+                    <a href="{{ site.url }}" target="_blank">{{ site.title or site.url }}</a>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            {% endif %}
 
-  <div style="
-    margin: 20px 0;
-    padding: 14px;
-    background-color: #f4f6f8;
-    border-left: 4px solid #3498db;
-    border-radius: 6px;
-    font-size: 14px;
-    color: #333;
-    text-align: left;
-  ">
-    <strong>Quick Notes:</strong>
-    <ul style="margin: 10px 0 0 18px; padding: 0;">
-      <li>
-        Devices are monitored using the <strong>TinyLittleHelper</strong> app — not IP pings.
-      </li>
-      <li>
-        To add a device, you must <strong>log into your account</strong> and download the helper.
-      </li>
-      <li>
-        Install and run the helper on the <strong>exact device you want to monitor</strong>.
-      </li>
-      <li>
-        Once running, the helper automatically registers the device and keeps it online in the background.
-      </li>
-      <li>
-        After installing the helper, <strong>refresh this page</strong> to see the device appear.
-      </li>
-    </ul>
-  </div>
-</section>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </section>
 
-    <section>
-      <h3>Registered Devices</h3>
-      <table>
-        <tr>
-          <th>Account</th>
-          <th>Device</th>
-          <th>Status</th>
-          <th>Last Seen</th>
-        </tr>
-        {% for device, info in devices.items() %}
-        <tr>
-          <td>{{ username }}</td>
-          <td>{{ device }}</td>
-          <td>{{ info.get('status', 'offline') }}</td>
-          <td>{{ info.get('last_seen', '-') }}</td>
-        </tr>
-        {% endfor %}
-      </table>
-    </section>
+  <section>
+    <h3>Privacy & Transparency</h3>
+    <div style="text-align:left;font-size:14px;background:#f4f6f8;padding:16px;border-left:4px solid #2ecc71;border-radius:8px;">
+      <ul>
+        <li>Only devices you personally install are monitored</li>
+        <li>No passwords, keystrokes, or private messages are recorded</li>
+        <li>Data is limited to technical monitoring signals</li>
+        <li>You are responsible for lawful usage</li>
+      </ul>
+    </div>
+  </section>
 
-    <!-- Donate -->
-    <section class="donate-section">
-      <h3>Keep TinyLittleHelper Free</h3>
-      <p>If you like this project, consider making a small donation to support its development.</p>
+  <section class="donate-section">
+    <h3>Keep TinyLittleHelper Free</h3>
+    <div id="paypal-container"></div>
+  </section>
 
-      <div id="paypal-container"></div>
+</div>
 
-      <div class="after-donate"></div>
-    </section>
+<script>
+  function toggleDevice(deviceId) {
+    const row = document.getElementById("details-" + deviceId);
+    if (!row) return;
+    row.style.display = row.style.display === "table-row" ? "none" : "table-row";
+  }
 
-  </div>
+  function toggleSites(deviceId) {
+    const box = document.getElementById("recent-" + deviceId);
+    if (!box) return;
+    box.style.display = box.style.display === "block" ? "none" : "block";
+  }
 
-  <script>
-    paypal.HostedButtons({
-      hostedButtonId: "89QPZ7UVCYLD8"
-    }).render("#paypal-container");
-  </script>
+  paypal.HostedButtons({
+    hostedButtonId: "89QPZ7UVCYLD8"
+  }).render("#paypal-container");
+</script>
 
 </body>
 </html>

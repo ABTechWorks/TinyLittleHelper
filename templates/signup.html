@@ -1,9 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Sign Up</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up – TinyLittleHelper</title>
   <link rel="stylesheet" href="/static/style.css">
+
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -14,16 +16,18 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 10px;
     }
 
     .signup-box {
       background-color: #fff;
-      padding: 30px 35px;
+      padding: 30px 25px;
       width: 100%;
       max-width: 450px;
       border-radius: 12px;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       text-align: center;
+      box-sizing: border-box;
     }
 
     h1 {
@@ -34,7 +38,7 @@
     .small {
       font-size: 0.95rem;
       color: #666;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
 
     form input {
@@ -44,6 +48,7 @@
       border-radius: 6px;
       border: 1px solid #ccc;
       font-size: 0.95rem;
+      box-sizing: border-box;
     }
 
     form button {
@@ -88,6 +93,21 @@
     .login-link a:hover {
       text-decoration: underline;
     }
+
+    @media (max-width: 480px) {
+      .signup-box {
+        padding: 20px 15px;
+      }
+
+      form input, form button {
+        font-size: 0.9rem;
+        padding: 10px;
+      }
+
+      .small, .login-link {
+        font-size: 0.85rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -112,8 +132,7 @@
     </form>
 
     <div class="login-link">
-      Already have an account?
-      <a href="/login">Log in</a>
+      Already have an account? <a href="/login">Log in</a>
     </div>
   </div>
 
