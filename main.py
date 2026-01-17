@@ -326,7 +326,7 @@ async def download_helper(session: str = Cookie(None)):
         return RedirectResponse("/login")
 
     return RedirectResponse(
-        "https://www.dropbox.com/scl/fi/pugk0sov7ny4kqz7defj6/tiny_helper.exe?dl=1"
+        "https://www.dropbox.com/scl/fi/xudwa8j1bp2yet0wfxsbp/tiny_helper.exe?rlkey=fbbnv612f4agp1k3lxr5kljm8&st=i2cau113&dl=1"
     )
 
 # --------------------------------------------------
