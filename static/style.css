@@ -36,7 +36,7 @@ table {
 }
 
 #devices-table th, #devices-table td {
-  border: 1px solid #444;
+  border: 1px solid #fff;
   padding: 10px;
   text-align: left;
 }
