@@ -206,7 +206,7 @@ async def dashboard(request: Request, session: str = Cookie(None)):
     user_id = cur.fetchone()[0]
 
     cur.execute(
-        "SELECT device_name, status, ip, mac, last_seen FROM devices WHERE user_id=?",
+        "SELECT device_name, status, ip, mac, last_seen FROM devices WHERE user_id=? OR user_id IS NULL",
         (user_id,)
     )
 
