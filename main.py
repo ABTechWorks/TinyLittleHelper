@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import FastAPI, Request, Form, Cookie
+from fastapi import FastAPI, Request, Form, Cookie, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -264,6 +264,39 @@ async def add_device_advanced_token(request: Request):
     conn.close()
 
     return {"status": "ok", "token": token}
+
+# --------------------------------------------------
+# HEARTBEAT (for helper exe devices)
+# --------------------------------------------------
+@app.post("/device_heartbeat")
+async def device_heartbeat(request: Request):
+    data = await request.json()
+    token = data.get("token")
+
+    if not token:
+        return JSONResponse({"error": "Missing token"}, status_code=400)
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT id FROM devices WHERE device_key=?",
+        (token,)
+    )
+    device = cur.fetchone()
+    if not device:
+        conn.close()
+        return JSONResponse({"error": "Device not found"}, status_code=404)
+
+    cur.execute(
+        "UPDATE devices SET last_seen=?, status='online' WHERE device_key=?",
+        (datetime.utcnow().isoformat(), token)
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "ok"}
 
 # --------------------------------------------------
 # WEB SESSION-BASED DEVICE REGISTRATION
