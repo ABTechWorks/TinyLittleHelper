@@ -135,11 +135,11 @@
     </section>
 
     <section>
-  <h3>Advanced Device Registration</h3>
+  <h3>Device Monitoring – How It Works</h3>
 
   <div style="
-    margin-bottom: 15px;
-    padding: 12px;
+    margin: 20px 0;
+    padding: 14px;
     background-color: #f4f6f8;
     border-left: 4px solid #3498db;
     border-radius: 6px;
@@ -148,49 +148,25 @@
     text-align: left;
   ">
     <strong>Quick Notes:</strong>
-    <ul style="margin: 8px 0 0 18px; padding: 0;">
+    <ul style="margin: 10px 0 0 18px; padding: 0;">
       <li>
-        <strong>Public IP:</strong> Visit
-        <a href="https://whatismyipaddress.com/" target="_blank">
-          whatismyipaddress.com
-        </a>
-        and copy the IPv4 address shown at the top.
+        Devices are monitored using the <strong>TinyLittleHelper</strong> app — not IP pings.
       </li>
       <li>
-        Paste that IP address into the <em>IP Address</em> field above when manually adding a device.
+        To add a device, you must <strong>log into your account</strong> and download the helper.
       </li>
       <li>
-        <strong>Helper App:</strong> If you downloaded and ran the TinyLittleHelper app, you do <u>not</u> need to add the device here.
-        The helper automatically registers and keeps the device online in the background.
+        Install and run the helper on the <strong>exact device you want to monitor</strong>.
       </li>
       <li>
-        After running the helper, refresh this page to see the device appear.
+        Once running, the helper automatically registers the device and keeps it online in the background.
+      </li>
+      <li>
+        After installing the helper, <strong>refresh this page</strong> to see the device appear.
       </li>
     </ul>
   </div>
-
-  <form method="POST" action="/add_device_advanced">
-    <input
-      type="text"
-      name="device_name"
-      placeholder="Device Name"
-      required
-    >
-    <input
-      type="text"
-      name="device_ip"
-      placeholder="IP Address"
-    >
-    <input
-      type="text"
-      name="device_mac"
-      placeholder="MAC Address (optional)"
-    >
-    <br>
-    <button type="submit">Add Device</button>
-  </form>
 </section>
-
 
     <section>
       <h3>Registered Devices</h3>
