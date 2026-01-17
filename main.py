@@ -8,7 +8,8 @@ import subprocess
 import re
 import os
 import sqlite3
-from db import init_db, get_db
+
+from db import get_db, init_db
 
 # Email
 import smtplib
@@ -18,14 +19,20 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# --------------------------------------------------
+# APP SETUP
+# --------------------------------------------------
 app = FastAPI()
+
+# INIT DB ON STARTUP (ONE TIME)
+print("🚀 Initializing DB...")
 init_db()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 # --------------------------------------------------
-# Utilities
+# UTILITIES
 # --------------------------------------------------
 def get_mac_from_ip(ip_address: str):
     try:
@@ -76,15 +83,13 @@ async def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 # --------------------------------------------------
-# SIGNUP (GET)
+# SIGNUP
 # --------------------------------------------------
 @app.get("/signup", response_class=HTMLResponse)
 async def signup_page(request: Request):
     return templates.TemplateResponse("signup.html", {"request": request})
 
-# --------------------------------------------------
-# SIGNUP (POST)
-# --------------------------------------------------
+
 @app.post("/signup")
 async def signup(
     request: Request,
@@ -136,15 +141,13 @@ Log in here:
     return RedirectResponse("/login", status_code=302)
 
 # --------------------------------------------------
-# LOGIN (GET)  <-- FIXES METHOD NOT ALLOWED
+# LOGIN
 # --------------------------------------------------
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-# --------------------------------------------------
-# LOGIN (POST)
-# --------------------------------------------------
+
 @app.post("/login")
 async def login(
     request: Request,
@@ -181,7 +184,7 @@ async def login(
     return response
 
 # --------------------------------------------------
-# DASHBOARD (FIXED)
+# DASHBOARD
 # --------------------------------------------------
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request, session: str = Cookie(None)):
@@ -200,12 +203,7 @@ async def dashboard(request: Request, session: str = Cookie(None)):
     username = session_row[0]
 
     cur.execute("SELECT id FROM users WHERE username=?", (username,))
-    user_row = cur.fetchone()
-    if not user_row:
-        conn.close()
-        return RedirectResponse("/login", status_code=303)
-
-    user_id = user_row[0]
+    user_id = cur.fetchone()[0]
 
     cur.execute(
         "SELECT device_name, status, ip, mac, last_seen FROM devices WHERE user_id=?",
@@ -230,73 +228,46 @@ async def dashboard(request: Request, session: str = Cookie(None)):
         {"request": request, "username": username, "devices": devices}
     )
 
-# Database helper
-def get_db():
-    conn = sqlite3.connect("database.db")
-    conn.row_factory = sqlite3.Row
-    return conn
-
-# --------------------------
-# TOKEN-BASED DEVICE REGISTRATION (helper exe)
-# --------------------------
+# --------------------------------------------------
+# TOKEN DEVICE REGISTRATION (helper exe)
+# --------------------------------------------------
 @app.post("/add_device_advanced_token")
 async def add_device_advanced_token(request: Request):
-    """
-    Registers a device using a unique token (from helper exe).
-    """
     data = await request.json()
-    
+
     token = data.get("token")
     device_name = data.get("device_name")
-    device_ip = data.get("ip")
-    device_mac = data.get("mac")
-    device_os = data.get("os")
-    recent_sites = data.get("recent_sites", [])  # optional, default empty list
 
     if not token or not device_name:
-        return JSONResponse({"error": "Missing required fields"}, status_code=400)
+        return JSONResponse({"error": "Missing token or device name"}, status_code=400)
 
     conn = get_db()
     cur = conn.cursor()
 
-    # Ensure table has 'recent_sites' column
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS devices (
-            device_key TEXT PRIMARY KEY,
-            device_name TEXT,
-            ip TEXT,
-            mac TEXT,
-            os TEXT,
-            status TEXT,
-            last_seen TEXT,
-            recent_sites TEXT
-        )
-    """)
-
-    # Insert or update device by token
     cur.execute("""
         INSERT OR REPLACE INTO devices
-        (device_key, device_name, ip, mac, os, status, last_seen, recent_sites)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, device_key, device_name, ip, mac, os, status, last_seen, recent_sites)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
+        None,
         token,
         device_name,
-        device_ip,
-        device_mac,
-        device_os,
+        data.get("ip"),
+        data.get("mac"),
+        data.get("os"),
         "online",
         datetime.utcnow().isoformat(),
-        str(recent_sites)  # store as string; can be JSON-decoded later
+        str(data.get("recent_sites", []))
     ))
 
     conn.commit()
     conn.close()
 
-    return JSONResponse({"status": "ok", "token": token})
+    return {"status": "ok", "token": token}
 
-# --------------------------
+# --------------------------------------------------
 # WEB SESSION-BASED DEVICE REGISTRATION
-# --------------------------
+# --------------------------------------------------
 @app.post("/add_device_advanced")
 async def add_device_advanced(request: Request, session: str = Cookie(None)):
     if not session:
@@ -311,10 +282,10 @@ async def add_device_advanced(request: Request, session: str = Cookie(None)):
         conn.close()
         return JSONResponse({"error": "Invalid session"}, status_code=401)
 
-    username = session_row["username"]
+    username = session_row[0]
 
     cur.execute("SELECT id FROM users WHERE username=?", (username,))
-    user_id = cur.fetchone()["id"]
+    user_id = cur.fetchone()[0]
 
     form = await request.form()
     device_name = form.get("device_name")
@@ -325,20 +296,6 @@ async def add_device_advanced(request: Request, session: str = Cookie(None)):
         device_mac = get_mac_from_ip(device_ip) or "pending"
 
     device_key = device_mac if device_mac != "pending" else device_name
-
-    # Ensure table exists
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS devices (
-            device_key TEXT PRIMARY KEY,
-            user_id INTEGER,
-            device_name TEXT,
-            ip TEXT,
-            mac TEXT,
-            status TEXT,
-            last_seen TEXT,
-            recent_sites TEXT
-        )
-    """)
 
     cur.execute("""
         INSERT OR REPLACE INTO devices
@@ -358,6 +315,7 @@ async def add_device_advanced(request: Request, session: str = Cookie(None)):
     conn.close()
 
     return RedirectResponse("/dashboard", status_code=303)
+
 # --------------------------------------------------
 # DOWNLOAD HELPER
 # --------------------------------------------------
@@ -387,7 +345,7 @@ async def logout(session: str = Cookie(None)):
     return response
 
 # --------------------------------------------------
-# CHANGE PASSWORD (GET)
+# CHANGE PASSWORD
 # --------------------------------------------------
 @app.get("/change-password", response_class=HTMLResponse)
 async def change_password_page(request: Request, session: str = Cookie(None)):
@@ -399,9 +357,7 @@ async def change_password_page(request: Request, session: str = Cookie(None)):
         {"request": request}
     )
 
-# --------------------------------------------------
-# CHANGE PASSWORD (POST)
-# --------------------------------------------------
+
 @app.post("/change-password")
 async def change_password(
     request: Request,
