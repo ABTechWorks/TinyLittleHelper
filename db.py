@@ -5,21 +5,19 @@ from pathlib import Path
 # --------------------------------------------------
 # DATABASE PATH (ABSOLUTE – FIXES SQLITE BUGS)
 # --------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "data" / "tinylittlehelper.db"
+DB_PATH = "/data/tinylittlehelper.db"
 
-os.makedirs(DB_PATH.parent, exist_ok=True)
+os.makedirs("/data", exist_ok=True)
 
 print("DB FILE LOCATION:", DB_PATH)
+print("DB EXISTS:", os.path.exists(DB_PATH))
 
 # --------------------------------------------------
 # DATABASE CONNECTION
 # --------------------------------------------------
 def get_db():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    print("RUNTIME DB USING:", DB_PATH)
-    return conn
+    return sqlite3.connect(DB_PATH)
+
 
 
 # --------------------------------------------------
