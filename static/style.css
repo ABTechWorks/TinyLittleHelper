@@ -1,61 +1,93 @@
-/* ------------------------
-   Body & General Layout
-------------------------- */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: black;
-  color: white;
+/* ========================
+   GLOBAL RESET
+======================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
+}
+
+/* ========================
+   BASE PAGE LAYOUT
+======================== */
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #000;
+  color: #fff;
+  line-height: 1.5;
+
+  /* CENTER EVERYTHING CLEANLY */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  line-height: 1.5;
 }
 
-* {
-  box-sizing: border-box;
+/* ========================
+   MAIN WRAPPER
+   (OPTIONAL BUT SAFE)
+======================== */
+.main-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
-/* ------------------------
-   Containers & Boxes
-------------------------- */
-.login-box, .center-box, .container, .signup-box {
+/* ========================
+   CONTAINERS
+======================== */
+.container,
+.login-box,
+.signup-box,
+.center-box {
+  width: 100%;
   max-width: 500px;
-  margin: 0 auto;
+  background-color: #111;
   padding: 20px;
   border-radius: 12px;
-  background-color: #111;
   text-align: center;
   box-shadow: 0 5px 20px rgba(0,0,0,0.5);
 }
 
-input, button, .download-link {
-  display: block;
+/* ========================
+   INPUTS & BUTTONS
+======================== */
+input,
+button,
+.download-link {
   width: 100%;
-  margin: 10px 0;
   padding: 12px;
+  margin: 10px 0;
   font-size: 16px;
   border-radius: 6px;
   border: 1px solid #333;
+  background-color: #000;
+  color: #fff;
 }
 
-/* Buttons */
 button {
   background-color: #222;
-  color: white;
   border: none;
   cursor: pointer;
   font-weight: 600;
-  transition: background-color 0.3s;
+  transition: background-color 0.25s ease;
 }
 
 button:hover {
   background-color: #333;
 }
 
-.primary-btn, .secondary-btn, .disabled-btn {
+.primary-btn,
+.secondary-btn,
+.disabled-btn {
   display: block;
   width: 100%;
   padding: 12px;
@@ -64,20 +96,17 @@ button:hover {
   font-weight: 600;
   text-decoration: none;
   text-align: center;
-  transition: background-color 0.3s;
 }
 
 .primary-btn {
   background-color: #3498db;
-  color: white;
+  color: #fff;
 }
-.primary-btn:hover { background-color: #2980b9; }
 
 .secondary-btn {
   background-color: #2ecc71;
-  color: white;
+  color: #fff;
 }
-.secondary-btn:hover { background-color: #27ae60; }
 
 .disabled-btn {
   background-color: #555;
@@ -85,57 +114,85 @@ button:hover {
   cursor: not-allowed;
 }
 
-/* ------------------------
-   Tables (Dashboard)
-------------------------- */
+/* ========================
+   LOGO
+======================== */
+.logo {
+  width: 90px;
+  margin: 0 auto 15px auto;
+  display: block;
+}
+
+/* ========================
+   TABLE WRAPPER (CRITICAL)
+======================== */
 .table-wrapper {
-  overflow-x: auto; /* scrollable on mobile */
-  -webkit-overflow-scrolling: touch;
-}
-
-table {
-  border-collapse: collapse;
   width: 100%;
-  max-width: 900px;
-  margin: 20px auto;
-  background-color: #111;
-  border-radius: 8px;
-  overflow: hidden;
-  min-width: 600px; /* keeps table readable on small screens */
+  overflow-x: auto;
+  margin-top: 15px;
 }
 
-#devices-table {
+/* ========================
+   TABLE
+======================== */
+table {
+  width: 100%;
+  border-collapse: collapse;
   background-color: #000;
   color: #fff;
 }
 
-#devices-table th, #devices-table td {
+th,
+td {
   border: 1px solid #fff;
   padding: 10px;
   text-align: left;
-}
-
-#devices-table th {
-  background-color: #111;
-  color: #fff;
-}
-
-#devices-table td {
   background-color: #000;
-  color: #fff;
 }
 
-/* Status colors */
-.online { color: #0f0; font-weight: bold; }
-.offline { color: #f00; font-weight: bold; }
+th {
+  background-color: #111;
+}
 
-/* ------------------------
-   Text & Links
-------------------------- */
-small, .tagline {
+.online {
+  color: #0f0;
+  font-weight: bold;
+}
+
+.offline {
+  color: #f00;
+  font-weight: bold;
+}
+
+/* ========================
+   PAYPAL
+======================== */
+#paypal-container {
+  width: 100%;
+  max-width: 320px;
+  margin: 20px auto;
+}
+
+/* ========================
+   FOOTER
+======================== */
+.footer {
+  margin-top: 20px;
+  font-size: 12px;
+  color: #aaa;
+  text-align: center;
+  width: 100%;
+}
+
+/* ========================
+   TEXT & LINKS
+======================== */
+small,
+.tagline {
   font-size: 14px;
   color: #aaa;
   margin-top: 10px;
+  display: block;
 }
 
 a {
@@ -147,81 +204,37 @@ a:hover {
   text-decoration: underline;
 }
 
-/* ------------------------
-   Logos & Images
-------------------------- */
-.logo {
-  width: 90px;
-  margin-bottom: 15px;
-}
-
-/* ------------------------
-   PayPal Button Container
-------------------------- */
-#paypal-container {
-  display: block;
-  width: 100%;
-  max-width: 320px;
-  margin: 20px auto;
-}
-
-#paypal-container * {
-  box-sizing: border-box;
-}
-
-.after-donate {
-  display: block;
-  width: 100%;
-  text-align: center;
-}
-
-/* ------------------------
-   Footer
-------------------------- */
-.footer {
-  margin-top: 20px;
-  font-size: 12px;
-  color: #888;
-  text-align: center;
-}
-
-/* ------------------------
-   Responsive Layout
-------------------------- */
-@media screen and (max-width: 768px) {
+/* ========================
+   RESPONSIVE
+======================== */
+@media (max-width: 768px) {
   body {
-    padding: 0;
+    justify-content: flex-start;
+    padding: 20px 10px;
   }
 
-  .login-box, .signup-box, .container, .center-box {
+  .container,
+  .login-box,
+  .signup-box,
+  .center-box {
     padding: 15px;
-    margin: 0 auto;
   }
 
-  input, button, .download-link, .primary-btn, .secondary-btn {
+  input,
+  button {
     font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  input,
+  button {
+    font-size: 13px;
     padding: 10px;
   }
 
-  table, #devices-table {
-    font-size: 14px;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  input, button, .download-link, .primary-btn, .secondary-btn {
+  th,
+  td {
     font-size: 13px;
-    padding: 8px;
   }
-
-  table, #devices-table {
-    font-size: 12px;
-  }
-}
-
-/* ------------------------
-   Force table text white
-------------------------- */
-.container table tbody td {
-  color: #fff !important;
 }

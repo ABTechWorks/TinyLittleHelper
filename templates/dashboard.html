@@ -188,9 +188,11 @@
     </div>
   </section>
 
-  <section>
-    <h3>Registered Devices</h3>
-    <table>
+<section>
+  <h3>Registered Devices</h3>
+
+  <div class="table-wrapper">
+    <table id="devices-table">
       <tr>
         <th>Account</th>
         <th>Device</th>
@@ -212,28 +214,36 @@
             <p><strong>Device ID:</strong> {{ device }}</p>
             <p><strong>IP:</strong> {{ info.get('ip','N/A') }}</p>
             <p><strong>OS:</strong> {{ info.get('os','Unknown') }}</p>
-            <p style="color:#777;font-size:13px;">More activity data will appear here.</p>
+            <p style="color:#777;font-size:13px;">
+              More activity data will appear here.
+            </p>
 
             {% if info.recent_sites %}
-              <span class="toggle-sites" onclick="toggleSites('{{ device }}')">Show/Hide Recent Sites</span>
+              <span class="toggle-sites"
+                    onclick="toggleSites('{{ device }}')">
+                Show/Hide Recent Sites
+              </span>
+
               <div id="recent-{{ device }}" class="recent-sites-box">
                 <ul>
                   {% for site in info.recent_sites | safe | loads %}
                   <li>
                     <strong>{{ site.browser }}</strong> —
-                    <a href="{{ site.url }}" target="_blank">{{ site.title or site.url }}</a>
+                    <a href="{{ site.url }}" target="_blank">
+                      {{ site.title or site.url }}
+                    </a>
                   </li>
                   {% endfor %}
                 </ul>
               </div>
             {% endif %}
-
           </div>
         </td>
       </tr>
       {% endfor %}
     </table>
-  </section>
+  </div>
+</section>
 
   <section>
     <h3>Privacy & Transparency</h3>
